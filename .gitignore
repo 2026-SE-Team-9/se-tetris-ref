@@ -1,7 +1,47 @@
-# Ignore Gradle project-specific cache directory
-.gradle
+# ============================================
+#  Tetris Team Project - .gitignore
+#  Gradle + Java 21 / IntelliJ, VS Code, Eclipse / Windows
+# ============================================
 
-# Ignore Gradle build output directory
-build
+# --- Gradle ---
+.gradle/
+build/
+# Gradle Wrapper jar는 반드시 커밋해야 함 (팀원 PC에 Gradle 없이 빌드 가능하게)
+!gradle/wrapper/gradle-wrapper.jar
 
-.vscode
+# --- Java 빌드 산출물 ---
+*.class
+out/
+bin/
+# 배포 패키지 등 jar 결과물은 제외하되, 위 wrapper jar는 예외
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# --- 로그 / 임시 파일 ---
+*.log
+*.tmp
+hs_err_pid*
+
+# --- IntelliJ IDEA ---
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# --- VS Code ---
+.vscode/
+
+# --- Eclipse ---
+.settings/
+.classpath
+.project
+.metadata/
+
+# --- Windows ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- macOS (혹시 모를 경우 대비) ---
+.DS_Store
