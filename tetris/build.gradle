@@ -25,10 +25,10 @@ dependencies {
     implementation libs.guava
 }
 
-// Apply a specific Java toolchain to ease working on different environments.
+// Apply the Java version required by the project.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
