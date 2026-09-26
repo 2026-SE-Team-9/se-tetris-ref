@@ -18,4 +18,4 @@
 - <!-- 남은 고려사항이나 리뷰어가 알아야 할 특이사항 (없으면 생략 가능) -->
 
 ## 🔗 연관 이슈 (Related Issues)
-Closes #
+- Jira: <!-- 예: [TET-12](https://kyun648.atlassian.net/browse/TET-12) -->
