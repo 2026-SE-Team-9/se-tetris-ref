@@ -2,19 +2,20 @@
 description: (Fixed) 테트리스 프로젝트 전용 Git Flow 변경사항 분석, 커밋, 푸시 후 PR 상태를 확인하여 생성하거나 최신화합니다. 다중 주제 자동 분할 및 AI 리뷰 코멘트 분리 등록 포함.
 ---
 
-> **참고:** 브랜치명과 PR 제목은 아래 6가지 유형만 사용합니다.
+> **참고:** 브랜치명과 커밋/PR 제목은 아래 6가지 유형만 사용합니다.
 >
-> | 유형 | 용도 | 브랜치명 | PR 제목 |
+> | 유형 | 용도 | 브랜치명 | 커밋/PR 제목 |
 > | :--- | :--- | :--- | :--- |
-> | `feat` | 새로운 기능 구현 | `feat/<작업명>` | `feat: <작업 내용>` |
-> | `fix` | 버그 수정 | `fix/<작업명>` | `fix: <작업 내용>` |
-> | `refactor` | 코드 구조 개선 (로직 불변) | `refactor/<작업명>` | `refactor: <작업 내용>` |
-> | `test` | 단위/통합 테스트 추가 및 코드 커버리지 확보 | `test/<작업명>` | `test: <작업 내용>` |
-> | `docs` | 문서 작성 및 수정 (README, 명세서 등) | `docs/<작업명>` | `docs: <작업 내용>` |
-> | `chore` | 빌드/환경 설정, 라이브러리 추가, `.gitignore` 등 | `chore/<작업명>` | `chore: <작업 내용>` |
+> | `feat` | 새로운 기능 구현 | `feat/TET-12-<작업명>` | `[TET-12] feat: <작업 내용>` |
+> | `fix` | 버그 수정 | `fix/TET-12-<작업명>` | `[TET-12] fix: <작업 내용>` |
+> | `refactor` | 코드 구조 개선 (로직 불변) | `refactor/TET-12-<작업명>` | `[TET-12] refactor: <작업 내용>` |
+> | `test` | 단위/통합 테스트 추가 및 코드 커버리지 확보 | `test/TET-12-<작업명>` | `[TET-12] test: <작업 내용>` |
+> | `docs` | 문서 작성 및 수정 (README, 명세서 등) | `docs/TET-12-<작업명>` | `[TET-12] docs: <작업 내용>` |
+> | `chore` | 빌드/환경 설정, 라이브러리 추가, `.gitignore` 등 | `chore/TET-12-<작업명>` | `[TET-12] chore: <작업 내용>` |
 >
-> 브랜치의 `<작업명>`은 영문 소문자 kebab-case로 작성하고, PR 제목은 반드시 해당 브랜치 유형과 동일한 접두사를 사용합니다.
+> 브랜치는 `<type>/<Jira-Key>-<kebab-case-작업명>` 형식으로 작성합니다. Jira Key는 `[A-Z0-9]+-[0-9]+` 형식을 사용하며, 커밋 메시지와 PR 제목은 반드시 `[Jira-Key] <type>: <설명>` 형식으로 통일합니다.
 > **언어:** 모든 결과 보고 및 PR 본문/댓글은 **한글**로 작성합니다.
+> **협업 기준:** 프로젝트, Git 및 Jira 운영 규칙은 `docs/project-conventions.md`를 따릅니다.
 
 // turbo-all
 
@@ -60,32 +61,47 @@ case "$CURRENT_BRANCH" in
     exit 1
     ;;
   *)
-    if [[ ! "$CURRENT_BRANCH" =~ ^(feat|fix|refactor|test|docs|chore)/[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-      echo "❌ 허용되지 않는 브랜치명입니다. <type>/<kebab-case-작업명> 형식을 사용하세요."
+    if [[ ! "$CURRENT_BRANCH" =~ ^(feat|fix|refactor|test|docs|chore)/[A-Z0-9]+-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+      echo "❌ 허용되지 않는 브랜치명입니다. <type>/<Jira-Key>-<kebab-case-작업명> 형식을 사용하세요."
       exit 1
     fi
     ;;
 esac
+
+BRANCH_TYPE="${CURRENT_BRANCH%%/*}"
+JIRA_KEY=$(echo "$CURRENT_BRANCH" | grep -oE '[A-Z0-9]+-[0-9]+')
+TARGET_BRANCH="dev"
 ```
 
 | 현재 브랜치 | push 가능? | 조치 |
 | :--- | :--- | :--- |
 | `main` | ❌ 금지 | "main에 직접 push할 수 없습니다. 작업 유형에 맞는 브랜치를 생성하세요." 안내 후 **중단** |
 | `dev` | ❌ 금지 | "dev에 직접 push할 수 없습니다. 작업 유형에 맞는 브랜치를 생성하세요." 안내 후 **중단** |
-| `feat/*`, `fix/*`, `refactor/*`, `test/*`, `docs/*`, `chore/*` | ✅ 허용 (Target: `dev`) | 계속 진행 |
+| `feat/TET-12-*`, `fix/TET-12-*`, `refactor/TET-12-*`, `test/TET-12-*`, `docs/TET-12-*`, `chore/TET-12-*` | ✅ 허용 (Target: `dev`) | 계속 진행 |
 | 그 외 패턴 | ❌ 금지 | 변경사항에 맞는 허용 브랜치명으로 변경 또는 새 브랜치 생성 후 계속 진행 |
 
 **main 또는 dev에 있는 경우 → 새 브랜치 생성 제안**:
 ```bash
 # 새로운 기능 구현 시 (dev 기반)
-git checkout -b feat/<기능명> dev
+git checkout -b feat/TET-12-<기능명> dev
 
 # 버그 수정 시 (dev 기반)
-git checkout -b fix/<이슈설명> dev
+git checkout -b fix/TET-12-<이슈설명> dev
 
 # 테스트 추가 및 커버리지 확보 시 (dev 기반)
-git checkout -b test/<작업명> dev
+git checkout -b test/TET-12-<작업명> dev
 ```
+
+---
+
+## 0-2. Jira 이슈 존재 확인 (필수!)
+
+브랜치명에서 Jira Key를 추출한 뒤 Atlassian Jira 연결을 사용하여 해당 이슈가 `TET` 프로젝트에 실제로 존재하는지 읽기 전용으로 확인합니다.
+
+- 이슈가 존재하고 프로젝트 Key가 `TET`이면 계속 진행합니다.
+- 이슈가 없거나 접근할 수 없으면 임의의 Key로 대체하지 말고 작업을 중단합니다.
+- 이 단계에서는 Jira 이슈를 생성하거나 수정하지 않습니다.
+- 새 이슈가 필요하면 `.github/jira_issue_template.md`로 기존 이슈 검색 및 승인 기반 생성 절차를 먼저 수행합니다.
 
 ---
 
@@ -107,52 +123,61 @@ git status -s
    - 현재 브랜치에서 변경사항을 원자적으로 커밋하고 푸시하여 **단일 PR**을 생성합니다. (아래 **2단계** 진행)
 2. **다중 주제(예: 게임 로직 버그 수정 + UI 메뉴 개편 + 문서 작업 등 성격이 다른 변경이 공존)인 경우:**
    - ⚠️ **단순히 커밋만 나누는 것으로는 부족하며, 반드시 주제별로 별도의 독립 브랜치를 생성하여 각각 독립된 PR로 분리해야 합니다!**
-   - 아래 **"1-A. 다중 주제 브랜치 및 다중 PR 분할 워크플로우"**에 따라 작업을 분리하여 수행합니다.
+   - 아래 **"1-B. 다중 주제 브랜치 및 다중 PR 분할 워크플로우"**에 따라 작업을 분리하여 수행합니다.
 
 ---
 
-## 1-A. 다중 주제 브랜치 및 다중 PR 분할 워크플로우 (Multi-Topic Branch & PR Split)
+## 1-A. Jira 이슈와 실제 작업 범위 정합성 확인 (필수!)
 
-성격이 다른 변경사항들이 섞여 있는 경우, 아래 절차에 따라 각 주제별로 브랜치를 파서 독립적인 PR을 순차적으로 생성합니다:
+Jira 이슈의 제목, 배경, 작업 범위, 제외 범위 및 완료 조건을 현재 브랜치의 전체 변경사항과 비교합니다.
 
-> **핵심 원리:** 기본 베이스 브랜치(`dev`) 기준으로 첫 번째 작업 브랜치를 파서 해당 파일만 커밋/PR을 올리고, 다시 베이스 브랜치 기준으로 두 번째 작업 브랜치를 파서 나머지 파일들을 커밋/PR로 올립니다.
-
-### [실행 절차 예시] 로직 수정(Topic A)과 UI 개선(Topic B)이 섞여 있는 경우:
-
-#### 1단계: 첫 번째 주제 (Topic A: 게임 로직) 브랜치 및 PR 생성
 ```bash
-# 1. dev 기준으로 첫 번째 기능 브랜치 생성 (워킹 트리의 변경사항은 그대로 보존됨)
-git checkout -b fix/tetris-collision-logic dev
-
-# 2. Topic A에 해당하는 파일들만 선택적으로 스테이징
-git add tetris/src/main/java/com/tetris/model/ tetris/src/test/
-
-# 3. Topic A 원자적 커밋 및 푸시
-git commit -m "fix(logic): 블럭 회전 시 보드 경계 충돌 판정 오류 수정"
-git push -u origin fix/tetris-collision-logic
-
-# 4. Topic A에 대한 독립 PR 생성 및 AI 리뷰 코멘트 등록
-# (아래 4-A 단계의 Step 2 ~ Step 4와 동일하게 수행)
+git fetch origin dev
+git log origin/dev..$CURRENT_BRANCH --oneline
+git diff --stat origin/dev...$CURRENT_BRANCH
+git diff origin/dev...$CURRENT_BRANCH
 ```
 
-#### 2단계: 두 번째 주제 (Topic B: UI/메뉴) 브랜치 및 PR 생성
-```bash
-# 1. 다시 dev 기준으로 두 번째 기능 브랜치 생성 (남아있는 Topic B 변경사항 보존됨)
-git checkout -b feat/menu-colorblind-ui dev
+> **역할 분리:** Jira에는 작업의 목적, 범위와 완료 조건을 기록하고, PR에는 실제 구현 내용, 변경 파일과 검증 결과를 기록합니다. Jira 제목을 `메뉴 작업 중`과 같은 상태 문구로 사용하지 않습니다. 진행 상태는 Jira 상태값으로 관리합니다.
 
-# 2. Topic B에 해당하는 파일들 스테이징
-git add tetris/src/main/java/com/tetris/view/
+| 비교 결과 | 처리 |
+| :--- | :--- |
+| Jira 범위와 실제 변경이 일치 | Jira를 변경하지 않고 계속 진행 |
+| 동일한 목표 안에서 필요한 작은 범위가 추가됨 | Jira 작업 범위 또는 완료 조건 보완안을 제시하고 중단. 승인 후 `.github/jira_issue_template.md`의 기존 이슈 보완 절차를 수행한 다음 재개 |
+| 원래 이슈와 독립적인 작업이 포함됨 | 기존 Jira 범위를 억지로 확장하지 않고 새 Jira 이슈와 별도 브랜치/PR로 분리 |
+| 실제 변경이 Jira 이슈와 관련 없음 | 즉시 중단하고 올바른 기존 Jira Key를 선택하거나 새 이슈를 생성한 뒤 브랜치명을 변경 |
 
-# 3. Topic B 원자적 커밋 및 푸시
-git commit -m "feat(ui): 색맹 모드 블럭 텍스처 패턴 및 시작 메뉴 UI 개선"
-git push -u origin feat/menu-colorblind-ui
+이 단계에서는 Jira 이슈를 직접 수정하지 않습니다. 단순 구현 세부사항, 변경 파일 목록 및 테스트 결과는 Jira에 중복 기록하지 않고 PR 본문에 작성합니다.
 
-# 4. Topic B에 대한 독립 PR 생성 및 AI 리뷰 코멘트 등록
-# (아래 4-A 단계의 Step 2 ~ Step 4와 동일하게 수행)
-```
+### 1-A-1. Jira 완료 조건 검증 (필수!)
 
-#### 3단계: 다중 PR 최종 보고
-- 생성된 각 브랜치의 PR 링크(PR #1, PR #2)를 일목요연하게 보고합니다.
+Jira 설명의 `완료 조건`을 항목별로 읽고, 전체 diff와 실제 검증 결과를 근거로 다음과 같이 판정합니다. Jira의 완료 조건은 일반 목록으로 유지하고, 각 항목을 동일한 문구의 체크박스로 PR 본문에 복사합니다.
+
+| 판정 | 처리 |
+| :--- | :--- |
+| 충족 | 확인에 사용한 파일, 명령 또는 원격 상태를 기록하고 PR에서 체크 |
+| 미충족 | PR에서 체크하지 않고 필요한 후속 작업을 보고 |
+| 확인 불가 | 추측하여 체크하지 않고 사용자 확인이 필요한 이유를 PR에 기록 |
+| PR 생성·병합 등 이후 단계에서 충족 | 해당 단계가 실제 완료된 뒤 다시 확인 |
+
+- Jira 완료 조건의 문구를 PR 체크리스트에서 임의로 바꾸거나 삭제하지 않습니다.
+- 테스트를 실행하지 못했거나 실패했다면 관련 완료 조건을 체크하지 않습니다.
+- `완료 조건`이 없거나 검증할 수 없는 표현뿐이면 구체적인 완료 조건 보완안을 제시하고 중단합니다.
+- Jira 설명은 완료 여부 기록을 위해 수정하지 않습니다. 완료 조건의 충족 상태와 검증 근거는 PR에서 관리합니다.
+
+---
+
+## 1-B. 다중 주제 브랜치 및 다중 PR 분할 워크플로우 (Multi-Topic Branch & PR Split)
+
+성격이 다른 변경사항이 섞여 있으면 각 주제를 다음 순서로 독립 처리합니다.
+
+1. 주제마다 기존 Jira 이슈를 선택하거나 `.github/jira_issue_template.md`로 새 이슈를 생성합니다.
+2. `dev` 기준으로 `<type>/<Jira-Key>-<작업명>` 브랜치를 각각 생성합니다.
+3. 해당 주제의 파일만 선택적으로 스테이징하고 `[<Jira-Key>] <type>: <설명>` 형식으로 커밋합니다.
+4. 각 브랜치를 push하고 `dev` 대상 PR과 최신 HEAD 기준 AI 리뷰 댓글을 각각 생성합니다.
+5. 생성된 Jira Key, 브랜치와 PR URL을 주제별로 최종 보고합니다.
+
+작업 파일을 다른 브랜치로 분리할 때는 워킹 트리의 사용자 변경을 보존하고, 한 주제의 변경을 다른 Jira 이슈나 PR에 섞지 않습니다.
 
 ---
 
@@ -166,10 +191,10 @@ git push -u origin feat/menu-colorblind-ui
 ```bash
 # 기능별로 나누어 스테이징 및 커밋 (필요시 반복)
 # git add <file_functional_group>
-# git commit -m "<type>(<scope>): <설명>"
+# git commit -m "[<Jira-Key>] <type>: <설명>"
 
-# Conventional Commit 메시지 생성 (diff 분석 기반)
-git commit -m "<type>: <설명>"
+# Conventional Commit 메시지 생성 (0-1단계에서 추출한 값 사용)
+git commit -m "[$JIRA_KEY] $BRANCH_TYPE: <설명>"
 
 # 원격에 푸시
 git push origin $CURRENT_BRANCH
@@ -180,15 +205,13 @@ git push origin $CURRENT_BRANCH
 
 ---
 
-## 3. Target Branch 결정 (Git Flow 변형)
+## 3. Target Branch 확인 (Git Flow 변형)
 
 | 현재 브랜치 패턴 | Target Branch | 설명 |
 | :--- | :--- | :--- |
-| `feat/*`, `fix/*`, `refactor/*`, `test/*`, `docs/*`, `chore/*` | **`dev`** | 기능 개발, 수정, 테스트, 문서 및 환경 작업 |
+| `<type>/<Jira-Key>-<작업명>` | **`dev`** | 기능 개발, 수정, 테스트, 문서 및 환경 작업 |
 
-```bash
-TARGET_BRANCH="dev"
-```
+`BRANCH_TYPE`, `JIRA_KEY`, `TARGET_BRANCH`는 0-1단계에서 한 번만 정의한 값을 계속 사용합니다.
 
 ---
 
@@ -225,7 +248,9 @@ COMMITS=$(git log origin/$TARGET_BRANCH..$CURRENT_BRANCH --oneline)
    - 📋 주요 변경 사항 (Change Summary)
    - 📁 변경된 파일 (Changed Files)
    - 🧪 검증 절차 및 결과 (Testing Procedure: `.\gradlew.bat test`, Java 21 게임 동작, 기능/비기능 체크)
+   - ✅ Jira 완료 조건 체크리스트 (Jira 문구를 그대로 복사하고 충족된 항목만 체크)
    - 📝 추가 참고사항 (Additional Notes)
+   - 🔗 연관 Jira (`$JIRA_KEY` 및 이슈 URL)
    - 🔀 Merge 가이드 (Target: `<TARGET_BRANCH>`, Squash and Merge 권장)
 
 2. **AI 코드 리뷰 작성:** 반드시 **`.github/code_review_template.md`** 파일의 테트리스 체크포인트(게임플레이, 20x10 보드, 7종 블럭, 색맹 모드, 점수판 영속성, Java 21 호환 등)와 3단계 우선순위(🔴치명적 / ⚠️경고 / 💡제안)를 확인합니다.
@@ -252,43 +277,13 @@ COMMITS=$(git log origin/$TARGET_BRANCH..$CURRENT_BRANCH --oneline)
    - (개선 제안 1-3개, 없으면 생략)
    ```
 
-### Step 3: Issue 자동 생성 및 연결 (현재 레포 기준)
+### Step 3: Jira Key 기반 PR 제목 정의
 
-PR과 연결할 이슈를 확인하거나, 없으면 현재 저장소에 새로 생성하여 연결합니다:
+브랜치명에서 Jira Key와 브랜치 유형을 추출하여 커밋 메시지와 동일한 형식의 PR 제목을 만듭니다. Jira 이슈는 0-2단계에서 존재가 확인되어 있어야 하며, 이 워크플로우에서는 Jira 또는 GitHub Issue를 생성하지 않습니다. GitHub-Jira 연동이 활성화된 환경에서는 브랜치, 커밋, PR 제목의 Jira Key를 기준으로 개발 정보가 자동 연결됩니다.
 
 ```bash
-# 1. PR 제목 정의: 브랜치 접두사와 동일한 유형을 사용
-# 예: feat/menu-colorblind-ui -> feat: 색맹 모드 메뉴 UI 구현
-BRANCH_TYPE="${CURRENT_BRANCH%%/*}"
-PR_TITLE="$BRANCH_TYPE: <종합된 변경 제목>"
-
-# 2. 브랜치 이름에서 이슈 번호 감지 (예: feat/12-foo -> 12)
-DETECTED_ISSUE_NUM=$(echo "$CURRENT_BRANCH" | grep -oE '/[0-9]+(-|$)' | tr -d '/-')
-
-EXISTING_ISSUE_FOUND=false
-
-if [ -n "$DETECTED_ISSUE_NUM" ]; then
-  if gh issue view "$DETECTED_ISSUE_NUM" > /dev/null 2>&1; then
-    echo "✅ 기존 이슈 #$DETECTED_ISSUE_NUM 확인됨. 해당 이슈에 연결합니다."
-    ISSUE_NUM="$DETECTED_ISSUE_NUM"
-    EXISTING_ISSUE_FOUND=true
-  fi
-fi
-
-# 3. 기존 이슈가 없으면 현재 저장소에 새 이슈 자동 생성
-if [ "$EXISTING_ISSUE_FOUND" = false ]; then
-  echo "🆕 현재 저장소에 새 이슈를 생성합니다..."
-  ISSUE_URL=$(gh issue create \
-    --title "$PR_TITLE" \
-    --body-file .pr_body_temp.md \
-    --assignee "@me")
-
-  ISSUE_NUM=${ISSUE_URL##*/}
-  echo "✅ 이슈 #$ISSUE_NUM 생성 완료."
-fi
-
-# 4. PR 본문 하단에 자동 Close 키워드 추가
-echo -e "\n\nCloses #$ISSUE_NUM" >> .pr_body_temp.md
+# 예: feat/TET-12-menu-colorblind-ui -> [TET-12] feat: 색맹 모드 메뉴 UI 구현
+PR_TITLE="[$JIRA_KEY] $BRANCH_TYPE: <종합된 변경 제목>"
 ```
 
 ### Step 4: PR 생성 및 AI 코드 리뷰 코멘트 분리 등록
@@ -312,7 +307,19 @@ REVIEW_COMMENT_URL=$(gh pr comment "$PR_URL" --body-file .pr_review_temp.md)
 echo "🤖 AI 코드 리뷰 코멘트 등록 완료: $REVIEW_COMMENT_URL"
 ```
 
-### Step 5: 임시 파일 정리
+### Step 5: PR 완료 조건 체크 및 Jira 상태 반영
+
+PR과 리뷰 댓글 생성이 끝나면 Jira 완료 조건을 다시 확인하고 PR 본문의 체크리스트를 갱신합니다. Jira 설명의 완료 조건은 수정하지 않습니다.
+
+1. 1-A-1단계에서 준비한 항목별 판정과 검증 근거를 다시 확인합니다.
+2. PR 생성 자체가 조건인 항목은 실제 PR URL과 상태를 확인한 뒤 PR에서 체크합니다.
+3. 병합, 배포 또는 사람의 수동 확인이 필요한 항목은 해당 결과가 확인되기 전까지 체크하지 않습니다.
+4. PR 본문을 갱신하여 충족 수, 미완료 항목과 확인 불가 사유가 리뷰어에게 보이도록 합니다.
+5. Jira 이슈는 `검토 중`으로 전환하고, 완료 조건 자체와 체크 상태는 PR에서 관리합니다.
+
+PR 본문 갱신에 실패하면 한 번만 최신 PR 상태를 다시 조회해 재시도합니다. 그래도 실패하면 체크되지 않은 항목과 오류를 사용자에게 보고합니다.
+
+### Step 6: 임시 파일 정리
 
 ```bash
 rm -f .pr_body_temp.md .pr_review_temp.md
@@ -339,8 +346,7 @@ git log origin/$TARGET_BRANCH..$CURRENT_BRANCH --oneline
 
 ```bash
 # 1. PR 본문 갱신
-BRANCH_TYPE="${CURRENT_BRANCH%%/*}"
-PR_TITLE="$BRANCH_TYPE: <종합된 변경 제목>"
+PR_TITLE="[$JIRA_KEY] $BRANCH_TYPE: <종합된 변경 제목>"
 
 gh pr edit \
   --title "$PR_TITLE" \
@@ -355,6 +361,8 @@ test -s .pr_review_temp.md || {
 REVIEW_COMMENT_URL=$(gh pr comment "$PR_URL" --body-file .pr_review_temp.md)
 echo "🤖 최신 AI 코드 리뷰 코멘트 등록 완료: $REVIEW_COMMENT_URL"
 ```
+
+새 커밋의 변경사항과 검증 결과가 Jira 완료 조건에 영향을 주는지 다시 판정합니다. Jira의 완료 조건 문구를 기준으로 PR 체크리스트를 최신 상태로 갱신하고, 더 이상 충족되지 않는 항목은 PR에서 체크를 해제한 뒤 사유를 기록합니다.
 
 ### Step 4: 정리
 
@@ -375,7 +383,9 @@ rm -f .pr_body_temp.md .pr_review_temp.md
 | 푸시 | O / X |
 | PR 상태 | 신규 생성 / 업데이트 / 변경없음 |
 | PR URL | `<URL>` |
-| Issue | `#<Number>` (신규 생성 또는 기존 연결) |
+| Jira | `$JIRA_KEY` |
+| Jira 정합성 | 일치 / 보완 후 일치 / 별도 이슈로 분리 |
+| PR의 Jira 완료 조건 | `<충족 수>/<전체 수>` 및 미완료·확인 불가 사유 |
 | Target | `$TARGET_BRANCH` (`dev`) |
 | AI 리뷰 | O / X (최신 HEAD SHA 및 댓글 URL) |
 
@@ -387,84 +397,8 @@ rm -f .pr_body_temp.md .pr_review_temp.md
 2. **PR 본문과 AI 리뷰 분리** - PR 본문은 `.github/pull_request_template.md` 기반으로 작성하고, AI 리뷰는 `.github/code_review_template.md` 기반으로 분석하여 별도 댓글(`gh pr comment`)로 분리 등록합니다.
 3. **PR 존재 확인 필수** - `gh pr view`로 먼저 확인 후 신규 생성 또는 업데이트를 결정합니다.
 4. **다중 주제 분할 필수** - 변경사항에 둘 이상의 성격(예: 게임 로직 + UI 개편)이 섞인 경우, 반드시 브랜치를 분할하여 개별 PR을 생성합니다.
-5. **이슈 자동 연결**: 브랜치 이름에 번호(예: `feat/12-foo`)가 있으면 해당 이슈를 연결하고, 없으면 새로 생성합니다.
-6. **PR 제목 유형 일치**: PR 제목은 반드시 현재 브랜치 접두사와 동일한 유형으로 시작해야 합니다. (예: `test/score-coverage` → `test: 점수 계산 테스트 및 커버리지 확보`)
-7. **코드 리뷰는 별도 댓글로 필수 등록**: AI 코드 리뷰를 PR 본문에 포함하지 말고, `gh pr comment --body-file .pr_review_temp.md`로 등록합니다. push 후에는 최신 HEAD 전체 diff를 다시 검토하며, 지적 사항이 없어도 댓글 등록을 생략하지 않습니다.
-
----
-
-## 흐름도
-
-```
-시작
-  │
-  ▼
-0. GH CLI 환경 및 인증 확인
-  │
-  ▼
-1. 변경사항 및 도메인(Scope) 분석 (git status -s)
-  │
-  ├── [다중 주제 감지] (예: 게임 로직 + UI/메뉴 변경 혼재)
-  │     │
-  │     ├── [Topic A 브랜치] (dev 기준 `git checkout -b fix/... dev`)
-  │     │     │
-  │     │     ▼
-  │     │   Topic A 관련 파일 선택적 스테이징 (`git add ...`)
-  │     │     │
-  │     │     ▼
-  │     │   Topic A 원자적 커밋 & 푸시
-  │     │     │
-  │     │     ▼
-  │     │   Topic A 독립 PR 생성 (.github/pull_request_template.md)
-  │     │     │
-  │     │     ▼
-  │     │   Topic A AI 리뷰 댓글 자동 등록 (.github/code_review_template.md)
-  │     │
-  │     └── [Topic B 브랜치] (dev 기준 `git checkout -b feat/... dev`)
-  │           │
-  │           ▼
-  │         Topic B 관련 파일 스테이징
-  │           │
-  │           ▼
-  │         Topic B 원자적 커밋 & 푸시
-  │           │
-  │           ▼
-  │         Topic B 독립 PR 생성 & AI 리뷰 댓글 등록 (.github/code_review_template.md)
-  │           │
-  │           ▼
-  │         다중 PR 최종 보고
-  │
-  └── [단일 주제]
-        │
-        ▼
-      현재 브랜치 확인
-        │
-        ├── `main` 또는 `dev` 브랜치 ──▶ 작업 유형에 맞는 `<type>/<작업명>` 브랜치 생성
-        │
-        └── `feat/*` / `fix/*` / `refactor/*` / `test/*` / `docs/*` / `chore/*` 브랜치 유지
-              │
-              ▼
-            원자적 커밋 & 푸시
-              │
-              ▼
-            Target Branch 결정 (`dev`)
-              │
-              ▼
-            PR 존재 여부 확인 (gh pr view)
-              │
-              ├── [기존 PR 존재] ──▶ PR 본문 갱신 & 새 리뷰 댓글 등록
-              │
-              └── [신규 PR 필요]
-                    │
-                    ▼
-                  이슈 연결 (기존 이슈 또는 gh issue create)
-                    │
-                    ▼
-                  PR 신규 생성 (.github/pull_request_template.md)
-                    │
-                    ▼
-                  AI 코드 리뷰 댓글 자동 등록 (.github/code_review_template.md)
-                    │
-                    ▼
-                  최종 보고
-```
+5. **Jira Key 및 실제 이슈 필수**: 브랜치명에는 `[A-Z0-9]+-[0-9]+` 형식의 Jira Key가 반드시 포함되어야 하며, `TET` 프로젝트에 실제로 존재하는 이슈여야 합니다. 이 문서에서는 Jira 또는 GitHub Issue를 생성하지 않습니다.
+6. **Jira-작업 범위 정합성 필수**: 커밋 및 push 전에 Jira의 목적·범위·완료 조건과 전체 diff를 비교합니다. 독립 작업을 기존 Jira에 억지로 포함하지 않습니다.
+7. **Jira 완료 조건은 PR에서 체크**: Jira의 완료 조건을 PR 본문에 그대로 복사하고, 실제 diff, 검증 결과와 원격 상태로 확인된 항목만 체크합니다. Jira 설명은 체크 상태 기록을 위해 수정하지 않습니다.
+8. **커밋/PR 제목 형식 일치**: 커밋 메시지와 PR 제목은 `[Jira-Key] <type>: <설명>` 형식을 사용하고, `<type>`은 현재 브랜치 접두사와 일치해야 합니다. (예: `test/TET-12-score-coverage` → `[TET-12] test: 점수 계산 테스트 및 커버리지 확보`)
+9. **코드 리뷰는 별도 댓글로 필수 등록**: AI 코드 리뷰를 PR 본문에 포함하지 말고, `gh pr comment --body-file .pr_review_temp.md`로 등록합니다. push 후에는 최신 HEAD 전체 diff를 다시 검토하며, 지적 사항이 없어도 댓글 등록을 생략하지 않습니다.
