@@ -149,6 +149,22 @@ git diff origin/dev...$CURRENT_BRANCH
 
 이 단계에서는 Jira 이슈를 직접 수정하지 않습니다. 단순 구현 세부사항, 변경 파일 목록 및 테스트 결과는 Jira에 중복 기록하지 않고 PR 본문에 작성합니다.
 
+### 1-A-1. Jira 완료 조건 검증 (필수!)
+
+Jira 설명의 `완료 조건`을 항목별로 읽고, 전체 diff와 실제 검증 결과를 근거로 다음과 같이 판정합니다. Jira의 완료 조건은 일반 목록으로 유지하고, 각 항목을 동일한 문구의 체크박스로 PR 본문에 복사합니다.
+
+| 판정 | 처리 |
+| :--- | :--- |
+| 충족 | 확인에 사용한 파일, 명령 또는 원격 상태를 기록하고 PR에서 체크 |
+| 미충족 | PR에서 체크하지 않고 필요한 후속 작업을 보고 |
+| 확인 불가 | 추측하여 체크하지 않고 사용자 확인이 필요한 이유를 PR에 기록 |
+| PR 생성·병합 등 이후 단계에서 충족 | 해당 단계가 실제 완료된 뒤 다시 확인 |
+
+- Jira 완료 조건의 문구를 PR 체크리스트에서 임의로 바꾸거나 삭제하지 않습니다.
+- 테스트를 실행하지 못했거나 실패했다면 관련 완료 조건을 체크하지 않습니다.
+- `완료 조건`이 없거나 검증할 수 없는 표현뿐이면 구체적인 완료 조건 보완안을 제시하고 중단합니다.
+- Jira 설명은 완료 여부 기록을 위해 수정하지 않습니다. 완료 조건의 충족 상태와 검증 근거는 PR에서 관리합니다.
+
 ---
 
 ## 1-B. 다중 주제 브랜치 및 다중 PR 분할 워크플로우 (Multi-Topic Branch & PR Split)
@@ -232,6 +248,7 @@ COMMITS=$(git log origin/$TARGET_BRANCH..$CURRENT_BRANCH --oneline)
    - 📋 주요 변경 사항 (Change Summary)
    - 📁 변경된 파일 (Changed Files)
    - 🧪 검증 절차 및 결과 (Testing Procedure: `.\gradlew.bat test`, Java 21 게임 동작, 기능/비기능 체크)
+   - ✅ Jira 완료 조건 체크리스트 (Jira 문구를 그대로 복사하고 충족된 항목만 체크)
    - 📝 추가 참고사항 (Additional Notes)
    - 🔗 연관 Jira (`$JIRA_KEY` 및 이슈 URL)
    - 🔀 Merge 가이드 (Target: `<TARGET_BRANCH>`, Squash and Merge 권장)
@@ -290,7 +307,19 @@ REVIEW_COMMENT_URL=$(gh pr comment "$PR_URL" --body-file .pr_review_temp.md)
 echo "🤖 AI 코드 리뷰 코멘트 등록 완료: $REVIEW_COMMENT_URL"
 ```
 
-### Step 5: 임시 파일 정리
+### Step 5: PR 완료 조건 체크 및 Jira 상태 반영
+
+PR과 리뷰 댓글 생성이 끝나면 Jira 완료 조건을 다시 확인하고 PR 본문의 체크리스트를 갱신합니다. Jira 설명의 완료 조건은 수정하지 않습니다.
+
+1. 1-A-1단계에서 준비한 항목별 판정과 검증 근거를 다시 확인합니다.
+2. PR 생성 자체가 조건인 항목은 실제 PR URL과 상태를 확인한 뒤 PR에서 체크합니다.
+3. 병합, 배포 또는 사람의 수동 확인이 필요한 항목은 해당 결과가 확인되기 전까지 체크하지 않습니다.
+4. PR 본문을 갱신하여 충족 수, 미완료 항목과 확인 불가 사유가 리뷰어에게 보이도록 합니다.
+5. Jira 이슈는 `검토 중`으로 전환하고, 완료 조건 자체와 체크 상태는 PR에서 관리합니다.
+
+PR 본문 갱신에 실패하면 한 번만 최신 PR 상태를 다시 조회해 재시도합니다. 그래도 실패하면 체크되지 않은 항목과 오류를 사용자에게 보고합니다.
+
+### Step 6: 임시 파일 정리
 
 ```bash
 rm -f .pr_body_temp.md .pr_review_temp.md
@@ -333,6 +362,8 @@ REVIEW_COMMENT_URL=$(gh pr comment "$PR_URL" --body-file .pr_review_temp.md)
 echo "🤖 최신 AI 코드 리뷰 코멘트 등록 완료: $REVIEW_COMMENT_URL"
 ```
 
+새 커밋의 변경사항과 검증 결과가 Jira 완료 조건에 영향을 주는지 다시 판정합니다. Jira의 완료 조건 문구를 기준으로 PR 체크리스트를 최신 상태로 갱신하고, 더 이상 충족되지 않는 항목은 PR에서 체크를 해제한 뒤 사유를 기록합니다.
+
 ### Step 4: 정리
 
 ```bash
@@ -354,6 +385,7 @@ rm -f .pr_body_temp.md .pr_review_temp.md
 | PR URL | `<URL>` |
 | Jira | `$JIRA_KEY` |
 | Jira 정합성 | 일치 / 보완 후 일치 / 별도 이슈로 분리 |
+| PR의 Jira 완료 조건 | `<충족 수>/<전체 수>` 및 미완료·확인 불가 사유 |
 | Target | `$TARGET_BRANCH` (`dev`) |
 | AI 리뷰 | O / X (최신 HEAD SHA 및 댓글 URL) |
 
@@ -367,5 +399,6 @@ rm -f .pr_body_temp.md .pr_review_temp.md
 4. **다중 주제 분할 필수** - 변경사항에 둘 이상의 성격(예: 게임 로직 + UI 개편)이 섞인 경우, 반드시 브랜치를 분할하여 개별 PR을 생성합니다.
 5. **Jira Key 및 실제 이슈 필수**: 브랜치명에는 `[A-Z0-9]+-[0-9]+` 형식의 Jira Key가 반드시 포함되어야 하며, `TET` 프로젝트에 실제로 존재하는 이슈여야 합니다. 이 문서에서는 Jira 또는 GitHub Issue를 생성하지 않습니다.
 6. **Jira-작업 범위 정합성 필수**: 커밋 및 push 전에 Jira의 목적·범위·완료 조건과 전체 diff를 비교합니다. 독립 작업을 기존 Jira에 억지로 포함하지 않습니다.
-7. **커밋/PR 제목 형식 일치**: 커밋 메시지와 PR 제목은 `[Jira-Key] <type>: <설명>` 형식을 사용하고, `<type>`은 현재 브랜치 접두사와 일치해야 합니다. (예: `test/TET-12-score-coverage` → `[TET-12] test: 점수 계산 테스트 및 커버리지 확보`)
-8. **코드 리뷰는 별도 댓글로 필수 등록**: AI 코드 리뷰를 PR 본문에 포함하지 말고, `gh pr comment --body-file .pr_review_temp.md`로 등록합니다. push 후에는 최신 HEAD 전체 diff를 다시 검토하며, 지적 사항이 없어도 댓글 등록을 생략하지 않습니다.
+7. **Jira 완료 조건은 PR에서 체크**: Jira의 완료 조건을 PR 본문에 그대로 복사하고, 실제 diff, 검증 결과와 원격 상태로 확인된 항목만 체크합니다. Jira 설명은 체크 상태 기록을 위해 수정하지 않습니다.
+8. **커밋/PR 제목 형식 일치**: 커밋 메시지와 PR 제목은 `[Jira-Key] <type>: <설명>` 형식을 사용하고, `<type>`은 현재 브랜치 접두사와 일치해야 합니다. (예: `test/TET-12-score-coverage` → `[TET-12] test: 점수 계산 테스트 및 커버리지 확보`)
+9. **코드 리뷰는 별도 댓글로 필수 등록**: AI 코드 리뷰를 PR 본문에 포함하지 말고, `gh pr comment --body-file .pr_review_temp.md`로 등록합니다. push 후에는 최신 HEAD 전체 diff를 다시 검토하며, 지적 사항이 없어도 댓글 등록을 생략하지 않습니다.
