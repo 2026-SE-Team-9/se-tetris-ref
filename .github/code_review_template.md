@@ -1,6 +1,6 @@
 # 🤖 AI 코드 리뷰 가이드라인 및 템플릿 (Code Review Guidelines & Template)
 
-본 문서는 `TeamProject_Req1.pdf` 및 `docs/requirements-1.md`의 1차 요구사항과 `docs/project-conventions.md`의 팀 규칙을 기준으로 PR의 코드 변경사항(diff)을 검토하고, 결과를 PR 댓글(Comment)에 남기기 위한 가이드입니다.
+본 문서는 `docs/TeamProject_Req1.pdf` 및 `docs/requirements-1.md`의 1차 요구사항과 `docs/project-conventions.md`의 팀 규칙을 기준으로 PR의 코드 변경사항(diff)을 검토하고, 결과를 PR 댓글(Comment)에 남기기 위한 가이드입니다.
 
 > **규칙 우선:** 이 문서와 `docs/project-conventions.md`의 내용이 다르면 `docs/project-conventions.md`를 따릅니다.
 
