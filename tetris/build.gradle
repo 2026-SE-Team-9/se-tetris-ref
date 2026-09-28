@@ -8,6 +8,7 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
+    id 'jacoco'
 }
 
 repositories {
@@ -40,4 +41,47 @@ application {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+
+    reports {
+        xml.required = true
+        csv.required = false
+        html.required = true
+    }
+}
+
+def jpackageExecutable = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+}.map { launcher ->
+    def executableName = System.getProperty('os.name').toLowerCase().contains('windows')
+            ? 'jpackage.exe'
+            : 'jpackage'
+    launcher.metadata.installationPath.file("bin/${executableName}")
+}
+
+tasks.register('jpackage', Exec) {
+    group = 'distribution'
+    description = 'Creates a self-contained Tetris application image.'
+    dependsOn tasks.named('installDist')
+
+    def inputDirectory = layout.buildDirectory.dir("install/${project.name}/lib")
+    def outputDirectory = layout.buildDirectory.dir('jpackage')
+
+    inputs.dir(inputDirectory)
+    outputs.dir(outputDirectory)
+
+    doFirst {
+        delete outputDirectory
+        executable jpackageExecutable.get().asFile
+        args '--type', 'app-image',
+                '--name', 'Tetris',
+                '--input', inputDirectory.get().asFile,
+                '--main-jar', tasks.named('jar').get().archiveFileName.get(),
+                '--main-class', application.mainClass.get(),
+                '--dest', outputDirectory.get().asFile
+    }
 }
