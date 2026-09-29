@@ -1,4 +1,4 @@
-package seoultech.se.tetris.blocks;
+package seoultech.se.tetris.legacy.blocks;
 
 import java.awt.Color;
 

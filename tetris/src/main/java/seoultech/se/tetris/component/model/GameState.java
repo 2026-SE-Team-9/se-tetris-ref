@@ -1,6 +1,6 @@
 package seoultech.se.tetris.component.model;
 
-import seoultech.se.tetris.blocks.Block;
+import seoultech.se.tetris.legacy.blocks.Block;
 
 public interface GameState {
     /** 현재 20x10 보드 상태 반환 (블록 번호 또는 색상 코드) */

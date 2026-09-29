@@ -1,4 +1,4 @@
-package seoultech.se.tetris.component;
+package seoultech.se.tetris.legacy.component;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -17,14 +17,14 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import seoultech.se.tetris.blocks.Block;
-import seoultech.se.tetris.blocks.IBlock;
-import seoultech.se.tetris.blocks.JBlock;
-import seoultech.se.tetris.blocks.LBlock;
-import seoultech.se.tetris.blocks.OBlock;
-import seoultech.se.tetris.blocks.SBlock;
-import seoultech.se.tetris.blocks.TBlock;
-import seoultech.se.tetris.blocks.ZBlock;
+import seoultech.se.tetris.legacy.blocks.Block;
+import seoultech.se.tetris.legacy.blocks.IBlock;
+import seoultech.se.tetris.legacy.blocks.JBlock;
+import seoultech.se.tetris.legacy.blocks.LBlock;
+import seoultech.se.tetris.legacy.blocks.OBlock;
+import seoultech.se.tetris.legacy.blocks.SBlock;
+import seoultech.se.tetris.legacy.blocks.TBlock;
+import seoultech.se.tetris.legacy.blocks.ZBlock;
 
 public class Board extends JFrame {
 

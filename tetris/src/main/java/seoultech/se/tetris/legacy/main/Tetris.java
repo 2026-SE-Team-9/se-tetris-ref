@@ -1,6 +1,6 @@
-package seoultech.se.tetris.main;
+package seoultech.se.tetris.legacy.main;
 
-import seoultech.se.tetris.component.Board;
+import seoultech.se.tetris.legacy.component.Board;
 
 public class Tetris {
 
