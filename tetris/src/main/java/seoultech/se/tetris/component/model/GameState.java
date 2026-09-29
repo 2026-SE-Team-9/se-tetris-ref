@@ -3,7 +3,7 @@ package seoultech.se.tetris.component.model;
 import seoultech.se.tetris.legacy.blocks.Block;
 
 public interface GameState {
-    /** 현재 20x10 보드 상태 반환 (블록 번호 또는 색상 코드) */
+    /** 현재 20x10 보드 상태 반환 (블록 종류 번호, 빈 칸은 0) */
     int[][] getBoard();
 
     /** 현재 떨어지고 있는 블록 객체 반환 */
@@ -20,6 +20,9 @@ public interface GameState {
 
     /** 실시간 점수 반환 */
     int getScore();
+
+    /** 현재 레벨 반환 (1부터 시작) */
+    int getLevel();
 
     /** 현재 삭제한 총 라인 수 반환 */
     int getLinesCleared();
