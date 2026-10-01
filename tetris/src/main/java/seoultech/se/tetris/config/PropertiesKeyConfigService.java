@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
+/** 키 설정을 properties 파일에 저장한다. 기본 경로는 사용자 홈의 .tetris/keybindings.properties이다. */
 public class PropertiesKeyConfigService implements KeyConfigService {
     private final Path filePath;
     private final Map<GameAction, Integer> keyCodes = new EnumMap<>(GameAction.class);
@@ -86,6 +87,7 @@ public class PropertiesKeyConfigService implements KeyConfigService {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(filePath)) {
             properties.load(reader);
+            // 모든 액션의 값을 검증한 뒤 적용해 일부 설정만 복원되는 일을 막는다.
             Map<GameAction, Integer> loaded = new EnumMap<>(GameAction.class);
             for (GameAction action : GameAction.values()) {
                 String value = properties.getProperty(action.name());

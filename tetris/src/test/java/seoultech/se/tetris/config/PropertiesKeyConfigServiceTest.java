@@ -16,7 +16,7 @@ class PropertiesKeyConfigServiceTest {
     Path tempDir;
 
     @Test
-    void changesAndResetsEveryDefaultKey() {
+    void providesDefaultsAndResetsChangedKey() {
         PropertiesKeyConfigService service = new PropertiesKeyConfigService(tempDir.resolve("keys.properties"));
 
         assertEquals(KeyEvent.VK_LEFT, service.getKeyCode(GameAction.MOVE_LEFT));
