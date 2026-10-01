@@ -36,6 +36,11 @@ public class PropertiesKeyConfigService implements KeyConfigService {
         if (keyCode <= KeyEvent.VK_UNDEFINED) {
             throw new IllegalArgumentException("유효하지 않은 키 코드: " + keyCode);
         }
+        for (GameAction other : GameAction.values()) {
+            if (other != action && keyCodes.get(other) == keyCode) {
+                throw new IllegalArgumentException("이미 사용 중인 키 코드: " + keyCode);
+            }
+        }
         keyCodes.put(action, keyCode);
     }
 
@@ -88,7 +93,7 @@ public class PropertiesKeyConfigService implements KeyConfigService {
                     throw new IllegalArgumentException("누락된 키 설정: " + action);
                 }
                 int keyCode = Integer.parseInt(value);
-                if (keyCode <= KeyEvent.VK_UNDEFINED) {
+                if (keyCode <= KeyEvent.VK_UNDEFINED || loaded.containsValue(keyCode)) {
                     throw new IllegalArgumentException("유효하지 않은 키 코드");
                 }
                 loaded.put(action, keyCode);

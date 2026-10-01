@@ -33,6 +33,8 @@ class PropertiesKeyConfigServiceTest {
         assertEquals(KeyEvent.VK_LEFT, service.getKeyCode(GameAction.MOVE_LEFT));
         assertThrows(IllegalArgumentException.class,
                 () -> service.setKeyCode(GameAction.MOVE_LEFT, KeyEvent.VK_UNDEFINED));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setKeyCode(GameAction.MOVE_LEFT, KeyEvent.VK_RIGHT));
     }
 
     @Test
@@ -83,5 +85,17 @@ class PropertiesKeyConfigServiceTest {
         service.load();
 
         assertEquals(KeyEvent.VK_LEFT, service.getKeyCode(GameAction.MOVE_LEFT));
+    }
+
+    @Test
+    void duplicateKeyInFileRestoresDefaults() throws IOException {
+        Path file = tempDir.resolve("duplicate.properties");
+        Files.writeString(file, "MOVE_LEFT=65\nMOVE_RIGHT=65\n");
+        PropertiesKeyConfigService service = new PropertiesKeyConfigService(file);
+
+        service.load();
+
+        assertEquals(KeyEvent.VK_LEFT, service.getKeyCode(GameAction.MOVE_LEFT));
+        assertEquals(KeyEvent.VK_RIGHT, service.getKeyCode(GameAction.MOVE_RIGHT));
     }
 }
