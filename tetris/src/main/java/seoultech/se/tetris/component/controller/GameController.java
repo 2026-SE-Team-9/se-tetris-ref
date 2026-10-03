@@ -16,10 +16,13 @@ public interface GameController {
     /** 블록을 시계방향으로 90도 회전 */
     void rotate();
 
+    /** 블록을 반시계방향으로 90도 회전 */
+    void rotateCounterclockwise();
+
     /** 게임 일시정지 / 재개 토글 */
     void togglePause();
 
-    /** 게임 일시정지 */
+    /** 게임 일시정지. Esc 입력 시 호출하고 일시정지 메뉴는 화면 계층에서 표시한다. */
     void pauseGame();
 
     /** 게임 재개 */
