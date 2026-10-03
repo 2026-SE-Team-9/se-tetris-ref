@@ -11,4 +11,3 @@
 삭제 시 함께 수정할 곳:
 
 - `tetris/build.gradle`의 `mainClass` (현재 `seoultech.se.tetris.legacy.main.Tetris`)
-- `component/model/GameState.java`의 `Block` import
