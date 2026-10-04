@@ -22,26 +22,39 @@ jobs:
       - name: Run tests and verify line coverage
         run: ./gradlew :tetris:clean :tetris:test :tetris:jacocoTestCoverageVerification
       - name: Check test and coverage data
+        if: always()
         run: |
           python3 - <<'PY'
+          import os
           from pathlib import Path
           import xml.etree.ElementTree as ET
 
           results = list(Path('tetris/build/test-results/test').glob('TEST-*.xml'))
-          test_count = sum(int(ET.parse(path).getroot().get('tests', 0)) for path in results)
-          assert test_count > 0, 'No tests were executed'
-
+          suites = [ET.parse(path).getroot() for path in results]
+          test_count = sum(int(suite.get('tests', 0)) for suite in suites)
+          failed = sum(int(suite.get('failures', 0)) + int(suite.get('errors', 0)) for suite in suites)
+          skipped = sum(int(suite.get('skipped', 0)) for suite in suites)
+          passed = test_count - failed - skipped
           execution_data = Path('tetris/build/jacoco/test.exec')
-          assert execution_data.is_file() and execution_data.stat().st_size > 0, 'JaCoCo execution data is missing'
-
           report = Path('tetris/build/reports/jacoco/test/jacocoTestReport.xml')
-          assert report.is_file(), 'JaCoCo XML report is missing'
           line = next((counter for counter in ET.parse(report).getroot().findall('counter')
-                       if counter.get('type') == 'LINE'), None)
+                       if counter.get('type') == 'LINE'), None) if report.is_file() else None
+          covered = int(line.get('covered')) if line is not None else 0
+          missed = int(line.get('missed')) if line is not None else 0
+          measured = covered + missed
+          coverage = f'{covered}/{measured} ({covered / measured:.1%})' if measured else '측정 데이터 없음'
+
+          with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as summary:
+              summary.write('### 테스트 및 JaCoCo 결과\n\n')
+              summary.write(f'- 테스트: **{test_count}개** (성공 {passed}, 실패 {failed}, 건너뜀 {skipped})\n')
+              summary.write(f'- 라인 커버리지: **{coverage}** (기준: 50%)\n')
+              summary.write('- 상세 보고서: 실행 페이지의 `test-and-jacoco-reports` 아티팩트\n')
+
+          assert test_count > 0, 'No tests were executed'
+          assert execution_data.is_file() and execution_data.stat().st_size > 0, 'JaCoCo execution data is missing'
+          assert report.is_file(), 'JaCoCo XML report is missing'
           assert line is not None, 'JaCoCo line coverage data is missing'
-          covered = int(line.get('covered'))
-          missed = int(line.get('missed'))
-          assert covered + missed > 0, 'No project lines were measured'
+          assert measured > 0, 'No project lines were measured'
           print(f'Line coverage: {covered}/{covered + missed} ({covered / (covered + missed):.1%})')
           PY
       - name: Upload test and JaCoCo reports
