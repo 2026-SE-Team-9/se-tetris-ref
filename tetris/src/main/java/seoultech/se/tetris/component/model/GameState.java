@@ -1,9 +1,14 @@
 package seoultech.se.tetris.component.model;
 
-import seoultech.se.tetris.legacy.blocks.Block;
+import seoultech.se.tetris.blocks.Block;
 
 public interface GameState {
-    /** 현재 20x10 보드 상태 반환 (블록 종류 번호, 빈 칸은 0) */
+    /**
+     * 현재 20x10 보드에 고정된 블럭들의 상태 반환.
+     *
+     * <p>각 칸의 값은 {@link seoultech.se.tetris.blocks.BlockType#code()}이며,
+     * 빈 칸은 {@link seoultech.se.tetris.blocks.BlockType#EMPTY_CODE}이다.
+     */
     int[][] getBoard();
 
     /** 현재 떨어지고 있는 블록 객체 반환 */
