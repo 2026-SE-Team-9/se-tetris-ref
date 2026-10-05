@@ -10,10 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.Properties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import seoultech.se.tetris.config.KeyConfigService.GameAction;
+import seoultech.se.tetris.config.KeyConfigService.KeyBinding;
 
 class PropertiesKeyConfigServiceTest {
     @TempDir
@@ -29,6 +31,8 @@ class PropertiesKeyConfigServiceTest {
         assertEquals(KeyEvent.VK_SPACE, service.getKeyCode(GameAction.HARD_DROP));
         assertEquals(KeyEvent.VK_UP, service.getKeyCode(GameAction.ROTATE));
         assertEquals(List.of(KeyEvent.VK_UP, KeyEvent.VK_X), service.getKeyCodes(GameAction.ROTATE));
+        assertEquals(new KeyBinding(KeyEvent.VK_UP, KeyEvent.VK_X), service.getKeyBinding(GameAction.ROTATE));
+        assertEquals(OptionalInt.empty(), service.getKeyBinding(GameAction.MOVE_LEFT).subKeyCode());
         assertEquals(KeyEvent.VK_ESCAPE, service.getKeyCode(GameAction.PAUSE_MENU));
         assertEquals(KeyEvent.VK_Z, service.getKeyCode(GameAction.ROTATE_COUNTERCLOCKWISE));
 
@@ -58,6 +62,7 @@ class PropertiesKeyConfigServiceTest {
         assertEquals(KeyEvent.VK_ENTER, restored.getKeyCode(GameAction.PAUSE_MENU));
         assertEquals(KeyEvent.VK_RIGHT, restored.getKeyCode(GameAction.MOVE_RIGHT));
         assertEquals(List.of(KeyEvent.VK_UP, KeyEvent.VK_R), restored.getKeyCodes(GameAction.ROTATE));
+        assertEquals(new KeyBinding(KeyEvent.VK_UP, KeyEvent.VK_R), restored.getKeyBinding(GameAction.ROTATE));
         assertEquals(KeyEvent.VK_Z, restored.getKeyCode(GameAction.ROTATE_COUNTERCLOCKWISE));
     }
 
@@ -116,6 +121,9 @@ class PropertiesKeyConfigServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> service.setKeyCodes(GameAction.ROTATE, List.of()));
         assertThrows(IllegalArgumentException.class,
+                () -> service.setKeyCodes(GameAction.ROTATE,
+                        List.of(KeyEvent.VK_R, KeyEvent.VK_T, KeyEvent.VK_Y)));
+        assertThrows(IllegalArgumentException.class,
                 () -> service.setKeyCodes(GameAction.ROTATE, List.of(KeyEvent.VK_R, KeyEvent.VK_R)));
         assertThrows(IllegalArgumentException.class,
                 () -> service.setKeyCodes(GameAction.ROTATE, List.of(KeyEvent.VK_R, KeyEvent.VK_UNDEFINED)));
@@ -123,6 +131,11 @@ class PropertiesKeyConfigServiceTest {
                 () -> service.setKeyCodes(GameAction.ROTATE, List.of(KeyEvent.VK_R, KeyEvent.VK_Z)));
         assertThrows(IllegalArgumentException.class,
                 () -> service.setKeyCode(GameAction.MOVE_LEFT, KeyEvent.VK_X));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setKeyBinding(GameAction.ROTATE, new KeyBinding(KeyEvent.VK_UNDEFINED)));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setKeyBinding(GameAction.ROTATE,
+                        new KeyBinding(KeyEvent.VK_R, KeyEvent.VK_R)));
         assertEquals(original, service.getKeyCodes(GameAction.ROTATE));
         assertEquals(KeyEvent.VK_LEFT, service.getKeyCode(GameAction.MOVE_LEFT));
     }
@@ -134,6 +147,7 @@ class PropertiesKeyConfigServiceTest {
         service.setKeyCodes(GameAction.ROTATE, supplied);
         supplied.clear();
         assertEquals(List.of(KeyEvent.VK_UP, KeyEvent.VK_R), service.getKeyCodes(GameAction.ROTATE));
+        assertEquals(KeyEvent.VK_UP, service.getKeyCode(GameAction.ROTATE));
         assertThrows(UnsupportedOperationException.class,
                 () -> service.getKeyCodes(GameAction.ROTATE).clear());
 
@@ -145,10 +159,29 @@ class PropertiesKeyConfigServiceTest {
     }
 
     @Test
+    void editsMainAndSubKeysIndependently() {
+        PropertiesKeyConfigService service = new PropertiesKeyConfigService(tempDir.resolve("keys.properties"));
+
+        service.setMainKeyCode(GameAction.ROTATE, KeyEvent.VK_R);
+        assertEquals(new KeyBinding(KeyEvent.VK_R, KeyEvent.VK_X), service.getKeyBinding(GameAction.ROTATE));
+
+        service.setSubKeyCode(GameAction.ROTATE, OptionalInt.empty());
+        assertEquals(new KeyBinding(KeyEvent.VK_R), service.getKeyBinding(GameAction.ROTATE));
+        assertEquals(List.of(KeyEvent.VK_R), service.getKeyCodes(GameAction.ROTATE));
+
+        service.setSubKeyCode(GameAction.ROTATE, OptionalInt.of(KeyEvent.VK_UP));
+        assertEquals(new KeyBinding(KeyEvent.VK_R, KeyEvent.VK_UP), service.getKeyBinding(GameAction.ROTATE));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setSubKeyCode(GameAction.ROTATE, OptionalInt.of(KeyEvent.VK_R)));
+        assertEquals(new KeyBinding(KeyEvent.VK_R, KeyEvent.VK_UP), service.getKeyBinding(GameAction.ROTATE));
+    }
+
+    @Test
     void invalidMultipleKeysRestoreAllDefaults() throws IOException {
         Path file = tempDir.resolve("keys.properties");
         PropertiesKeyConfigService service = new PropertiesKeyConfigService(file);
-        for (String value : List.of("38,38", "38,", "", "38,0", "38,not-a-key")) {
+        for (String value : List.of("38,38", "38,", "", "38,0", "38,not-a-key", "38,82,84")) {
             service.setKeyCode(GameAction.MOVE_LEFT, KeyEvent.VK_A);
             service.save();
             rewriteProperty(file, "ROTATE", value);

@@ -19,8 +19,9 @@ import java.util.stream.Collectors;
 
 /** 키 설정을 properties 파일에 저장한다. 기본 경로는 사용자 홈의 .tetris/keybindings.properties이다. */
 public class PropertiesKeyConfigService implements KeyConfigService {
+    private static final int MAX_KEYS_PER_ACTION = 2;
     private final Path filePath;
-    private final Map<GameAction, List<Integer>> keyCodes = new EnumMap<>(GameAction.class);
+    private final Map<GameAction, KeyBinding> keyBindings = new EnumMap<>(GameAction.class);
 
     public PropertiesKeyConfigService() {
         this(Path.of(System.getProperty("user.home"), ".tetris", "keybindings.properties"));
@@ -32,26 +33,31 @@ public class PropertiesKeyConfigService implements KeyConfigService {
     }
 
     @Override
-    public List<Integer> getKeyCodes(GameAction action) {
-        return keyCodes.get(Objects.requireNonNull(action, "action"));
+    public KeyBinding getKeyBinding(GameAction action) {
+        return keyBindings.get(Objects.requireNonNull(action, "action"));
     }
 
     @Override
-    public void setKeyCodes(GameAction action, List<Integer> codes) {
+    public void setKeyBinding(GameAction action, KeyBinding binding) {
         Objects.requireNonNull(action, "action");
-        List<Integer> replacement = List.copyOf(Objects.requireNonNull(codes, "keyCodes"));
-        validateKeys(replacement, new HashSet<>());
+        KeyBinding replacement = Objects.requireNonNull(binding, "binding");
+        List<Integer> replacementCodes = replacement.keyCodes();
+        validateKeys(replacementCodes, new HashSet<>());
         for (GameAction other : GameAction.values()) {
-            if (other != action && keyCodes.get(other).stream().anyMatch(replacement::contains)) {
+            if (other != action && keyBindings.get(other).keyCodes().stream()
+                    .anyMatch(replacementCodes::contains)) {
                 throw new IllegalArgumentException("다른 액션에서 이미 사용 중인 키 코드");
             }
         }
-        keyCodes.put(action, replacement);
+        keyBindings.put(action, replacement);
     }
 
     private static void validateKeys(List<Integer> codes, Set<Integer> used) {
         if (codes.isEmpty()) {
             throw new IllegalArgumentException("키를 하나 이상 지정해야 합니다");
+        }
+        if (codes.size() > MAX_KEYS_PER_ACTION) {
+            throw new IllegalArgumentException("액션당 키는 최대 두 개까지 지정할 수 있습니다");
         }
         for (int code : codes) {
             if (code <= KeyEvent.VK_UNDEFINED || !used.add(code)) {
@@ -62,14 +68,14 @@ public class PropertiesKeyConfigService implements KeyConfigService {
 
     @Override
     public void resetToDefault() {
-        keyCodes.clear();
-        keyCodes.put(GameAction.MOVE_LEFT, List.of(KeyEvent.VK_LEFT));
-        keyCodes.put(GameAction.MOVE_RIGHT, List.of(KeyEvent.VK_RIGHT));
-        keyCodes.put(GameAction.SOFT_DROP, List.of(KeyEvent.VK_DOWN));
-        keyCodes.put(GameAction.HARD_DROP, List.of(KeyEvent.VK_SPACE));
-        keyCodes.put(GameAction.ROTATE, List.of(KeyEvent.VK_UP, KeyEvent.VK_X));
-        keyCodes.put(GameAction.ROTATE_COUNTERCLOCKWISE, List.of(KeyEvent.VK_Z));
-        keyCodes.put(GameAction.PAUSE_MENU, List.of(KeyEvent.VK_ESCAPE));
+        keyBindings.clear();
+        keyBindings.put(GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_LEFT));
+        keyBindings.put(GameAction.MOVE_RIGHT, new KeyBinding(KeyEvent.VK_RIGHT));
+        keyBindings.put(GameAction.SOFT_DROP, new KeyBinding(KeyEvent.VK_DOWN));
+        keyBindings.put(GameAction.HARD_DROP, new KeyBinding(KeyEvent.VK_SPACE));
+        keyBindings.put(GameAction.ROTATE, new KeyBinding(KeyEvent.VK_UP, KeyEvent.VK_X));
+        keyBindings.put(GameAction.ROTATE_COUNTERCLOCKWISE, new KeyBinding(KeyEvent.VK_Z));
+        keyBindings.put(GameAction.PAUSE_MENU, new KeyBinding(KeyEvent.VK_ESCAPE));
     }
 
     @Override
@@ -104,7 +110,7 @@ public class PropertiesKeyConfigService implements KeyConfigService {
         try (Reader reader = Files.newBufferedReader(filePath)) {
             properties.load(reader);
             // 모든 액션의 값을 검증한 뒤 적용해 일부 설정만 복원되는 일을 막는다.
-            Map<GameAction, List<Integer>> loaded = new EnumMap<>(GameAction.class);
+            Map<GameAction, KeyBinding> loaded = new EnumMap<>(GameAction.class);
             Set<Integer> used = new HashSet<>();
             for (GameAction action : GameAction.values()) {
                 String value = properties.getProperty(action.name());
@@ -116,10 +122,12 @@ public class PropertiesKeyConfigService implements KeyConfigService {
                     codes.add(Integer.parseInt(token.trim()));
                 }
                 validateKeys(codes, used);
-                loaded.put(action, List.copyOf(codes));
+                loaded.put(action, codes.size() == 1
+                        ? new KeyBinding(codes.getFirst())
+                        : new KeyBinding(codes.getFirst(), codes.get(1)));
             }
-            keyCodes.clear();
-            keyCodes.putAll(loaded);
+            keyBindings.clear();
+            keyBindings.putAll(loaded);
         } catch (IllegalArgumentException e) {
             // 구형 PAUSE/EXIT 설정 등 필수 액션이 없거나 손상된 파일은 새 기본값으로 복구한다.
             resetToDefault();
