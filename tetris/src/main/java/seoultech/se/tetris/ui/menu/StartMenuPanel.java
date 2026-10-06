@@ -61,9 +61,10 @@ public class StartMenuPanel extends JPanel {
         int y = 70;
         g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
         g2.setColor(Color.CYAN);
+        int lineHeight = g2.getFontMetrics().getHeight() + 2;
         for (String line : TITLE) {
             drawCentered(g2, line, y);
-            y += 18;
+            y += lineHeight;
         }
 
         y += 50;
