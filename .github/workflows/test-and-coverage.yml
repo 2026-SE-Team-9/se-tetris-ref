@@ -1,4 +1,4 @@
-name: JaCoCo line coverage
+name: JUnit tests and JaCoCo coverage
 
 on:
   pull_request:
@@ -20,7 +20,7 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v5
       - name: Run tests and verify line coverage
-        run: ./gradlew :tetris:clean :tetris:jacocoTestReport :tetris:jacocoTestCoverageVerification
+        run: ./gradlew :tetris:test :tetris:jacocoTestCoverageVerification
       - name: Check test and coverage data
         if: always()
         run: |
@@ -62,6 +62,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: test-and-jacoco-reports
+          retention-days: 7
           path: |
             tetris/build/reports/tests/test/
             tetris/build/reports/jacoco/test/html/
