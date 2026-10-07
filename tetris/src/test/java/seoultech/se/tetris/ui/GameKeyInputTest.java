@@ -49,7 +49,7 @@ class GameKeyInputTest {
         JPanel panel = new JPanel();
         input.attachTo(panel);
 
-        config.setKeyCode(GameAction.MOVE_LEFT, KeyEvent.VK_A);
+        config.setMainKeyCode(GameAction.MOVE_LEFT, KeyEvent.VK_A);
         press(input, panel, KeyEvent.VK_LEFT);
         input.refreshBindings();
         press(input, panel, KeyEvent.VK_LEFT);
