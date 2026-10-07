@@ -53,6 +53,7 @@ jobs:
               summary.write(f'- 라인 커버리지: **{coverage}** (기준: 50%)\n')
               summary.write('- 상세 보고서: 실행 페이지의 `test-and-jacoco-reports` 아티팩트\n')
 
+          print(f'Tests: {passed}/{test_count} passed (failed {failed}, skipped {skipped})')
           assert test_count > 0, 'No tests were executed'
           assert execution_data.is_file() and execution_data.stat().st_size > 0, 'JaCoCo execution data is missing'
           assert report.is_file(), 'JaCoCo XML report is missing'
