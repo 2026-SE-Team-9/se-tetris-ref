@@ -29,11 +29,11 @@ public final class GameKeyInput extends KeyAdapter {
         this.controller = Objects.requireNonNull(controller, "controller");
         this.state = Objects.requireNonNull(state, "state");
         this.showPauseMenu = Objects.requireNonNull(showPauseMenu, "showPauseMenu");
-        refreshBindings();
+        applyKeyBindings();
     }
 
-    /** 설정 화면에서 게임으로 돌아올 때 호출하면 변경된 키가 적용된다. */
-    public void refreshBindings() {
+    /** 저장된 설정으로 맵 전체를 교체하여 제거·변경된 이전 키 매핑도 없앤다. */
+    public void applyKeyBindings() {
         Map<Integer, GameAction> updated = new HashMap<>();
         for (GameAction action : GameAction.values()) {
             for (int keyCode : keyConfig.getKeyCodes(action)) {
@@ -41,6 +41,11 @@ public final class GameKeyInput extends KeyAdapter {
             }
         }
         actionsByKey = Map.copyOf(updated);
+    }
+
+    /** 편집 중에는 기존 입력을 유지하고 저장 성공 시 새 입력 맵을 적용하는 편집기를 만든다. */
+    public KeyBindingEditor createKeyBindingEditor() {
+        return new KeyBindingEditor(keyConfig, this::applyKeyBindings);
     }
 
     /** 게임 화면에 연결한다. 같은 화면에 다시 연결해도 리스너는 한 번만 등록된다. */
@@ -65,6 +70,7 @@ public final class GameKeyInput extends KeyAdapter {
         }
     }
 
+    /** 연결된 화면의 키를 액션으로 찾아 실행한다. 일시정지 중 조작과 게임 종료 후 입력은 무시한다. */
     @Override
     public void keyPressed(KeyEvent event) {
         if (attachedComponent == null || event.getComponent() != attachedComponent) {
