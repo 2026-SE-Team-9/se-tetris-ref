@@ -1,4 +1,4 @@
-package seoultech.se.tetris.ui;
+package seoultech.se.tetris.config;
 
 import java.awt.event.KeyEvent;
 import java.util.EnumMap;
@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
 
-import seoultech.se.tetris.config.KeyConfigService;
 import seoultech.se.tetris.config.KeyConfigService.GameAction;
 import seoultech.se.tetris.config.KeyConfigService.KeyBinding;
 

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.component.controller.GameController;
 import seoultech.se.tetris.component.model.GameState;
+import seoultech.se.tetris.config.KeyBindingEditor;
 import seoultech.se.tetris.config.KeyConfigService.GameAction;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
 

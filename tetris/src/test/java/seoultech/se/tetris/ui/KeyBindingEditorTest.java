@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.OptionalInt;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import seoultech.se.tetris.config.KeyBindingEditor;
 import seoultech.se.tetris.config.KeyConfigService.GameAction;
 import seoultech.se.tetris.config.KeyConfigService.KeyBinding;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;

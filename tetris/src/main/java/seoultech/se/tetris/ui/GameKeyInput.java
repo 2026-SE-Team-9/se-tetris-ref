@@ -8,6 +8,7 @@ import java.util.Objects;
 import javax.swing.JComponent;
 import seoultech.se.tetris.component.controller.GameController;
 import seoultech.se.tetris.component.model.GameState;
+import seoultech.se.tetris.config.KeyBindingEditor;
 import seoultech.se.tetris.config.KeyConfigService;
 import seoultech.se.tetris.config.KeyConfigService.GameAction;
 
