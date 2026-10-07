@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,9 +39,16 @@ public class PropertiesKeyConfigService implements KeyConfigService {
     }
 
     @Override
-    public void setKeyBinding(GameAction action, KeyBinding binding) {
-        Objects.requireNonNull(action, "action");
-        KeyBinding replacement = Objects.requireNonNull(binding, "binding");
+    public void setMainKeyCode(GameAction action, int mainKeyCode) {
+        updateBinding(action, new KeyBinding(mainKeyCode, getKeyBinding(action).subKeyCode()));
+    }
+
+    @Override
+    public void setSubKeyCode(GameAction action, OptionalInt subKeyCode) {
+        updateBinding(action, new KeyBinding(getKeyBinding(action).mainKeyCode(), subKeyCode));
+    }
+
+    private void updateBinding(GameAction action, KeyBinding replacement) {
         List<Integer> replacementCodes = replacement.keyCodes();
         validateKeys(replacementCodes, new HashSet<>());
         for (GameAction other : GameAction.values()) {
@@ -119,7 +127,7 @@ public class PropertiesKeyConfigService implements KeyConfigService {
                 }
                 List<Integer> codes = new ArrayList<>();
                 for (String token : value.split(",", -1)) {
-                    codes.add(Integer.parseInt(token.trim()));
+                    codes.add(Integer.valueOf(token.trim()));
                 }
                 validateKeys(codes, used);
                 loaded.put(action, codes.size() == 1

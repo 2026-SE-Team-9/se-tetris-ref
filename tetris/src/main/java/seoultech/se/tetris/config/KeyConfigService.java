@@ -52,41 +52,18 @@ public interface KeyConfigService {
         return getKeyBinding(action).mainKeyCode();
     }
 
-    /** 기존 호환 API. 서브키를 지우고 메인 키 하나로 교체한다. */
-    default void setKeyCode(GameAction action, int keyCode) {
-        setKeyCodes(action, List.of(keyCode));
-    }
-
     /** UI에서 메인 키와 선택적 서브키를 각각 조회한다. */
     KeyBinding getKeyBinding(GameAction action);
 
-    /** 메인 키와 선택적 서브키를 함께 교체한다. 중복·충돌 키는 거부한다. */
-    void setKeyBinding(GameAction action, KeyBinding binding);
-
     /** 서브키를 유지하면서 메인 키를 변경한다. */
-    default void setMainKeyCode(GameAction action, int mainKeyCode) {
-        setKeyBinding(action, new KeyBinding(mainKeyCode, getKeyBinding(action).subKeyCode()));
-    }
+    void setMainKeyCode(GameAction action, int mainKeyCode);
 
     /** 메인 키를 유지하면서 서브키를 변경하거나 비운다. */
-    default void setSubKeyCode(GameAction action, OptionalInt subKeyCode) {
-        setKeyBinding(action, new KeyBinding(getKeyBinding(action).mainKeyCode(), subKeyCode));
-    }
+    void setSubKeyCode(GameAction action, OptionalInt subKeyCode);
 
     /** 입력 판정용으로 메인 키와 선택적 서브키를 순서대로 반환한다. */
     default List<Integer> getKeyCodes(GameAction action) {
         return getKeyBinding(action).keyCodes();
-    }
-
-    /** 기존 목록 API. 메인 키 1개와 선택적 서브키 1개만 허용한다. */
-    default void setKeyCodes(GameAction action, List<Integer> keyCodes) {
-        List<Integer> codes = List.copyOf(Objects.requireNonNull(keyCodes, "keyCodes"));
-        if (codes.isEmpty() || codes.size() > 2) {
-            throw new IllegalArgumentException("액션당 키는 한 개 또는 두 개만 지정할 수 있습니다");
-        }
-        setKeyBinding(action, codes.size() == 1
-                ? new KeyBinding(codes.getFirst())
-                : new KeyBinding(codes.getFirst(), codes.get(1)));
     }
 
     /** 기본값: 방향키 이동, Space 하드 드롭, ↑/X 시계 회전, Z 반시계 회전, Esc 일시정지 메뉴 */
