@@ -41,7 +41,6 @@ application {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
-    finalizedBy tasks.named('jacocoTestReport')
 }
 
 // The legacy package is reference code, so measure only the project implementation.
