@@ -19,8 +19,10 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v5
-      - name: Run tests and verify line coverage
-        run: ./gradlew :tetris:test :tetris:jacocoTestCoverageVerification
+      - name: Run JUnit tests
+        run: ./gradlew :tetris:test
+      - name: Verify JaCoCo line coverage
+        run: ./gradlew :tetris:jacocoTestCoverageVerification
       - name: Check test and coverage data
         if: always()
         run: |
