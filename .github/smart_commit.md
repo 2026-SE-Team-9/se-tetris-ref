@@ -105,6 +105,22 @@ git checkout -b test/TET-12-<작업명> dev
 
 ---
 
+## 0-3. 대응 GitHub Issue 확인 및 등록 (필수!)
+
+Jira 이슈의 제목, 배경, 작업 범위, 완료 조건과 URL을 읽고, 같은 Jira Key를 가진 GitHub Issue가 있는지 열린 이슈와 닫힌 이슈 모두에서 먼저 검색합니다. 새 Issue 생성은 1-A단계에서 Jira와 실제 변경 범위가 일치하는지 확인한 뒤 진행합니다.
+
+```bash
+gh issue list --state all --search "$JIRA_KEY" --json number,title,body,state,url --limit 100
+```
+
+- 검색 결과의 제목과 본문에 적힌 Jira 링크를 직접 확인합니다. 같은 Jira 이슈에 대응하는 Issue가 있으면 번호와 URL을 재사용하며 중복 생성하지 않습니다. 닫힌 Issue는 임의로 다시 열지 않습니다.
+- 기존 Issue의 내용이 템플릿 형식과 다르면 수정안을 제시하고 승인 후 갱신합니다. 후보가 여럿이면 연결할 번호를 확인받습니다.
+- 대응 Issue가 없으면 `.github/github_issue_template.md`의 본문을 Jira 내용으로 채워 보여주고, 사용자 승인 후 생성합니다. `관련 링크`에는 Jira URL을 넣어 전체 본문을 4줄로 작성합니다. 요약을 위해 Jira의 상세 설명을 그대로 복사하거나 확인되지 않은 완료 기준을 만들지 않습니다.
+
+템플릿의 대괄호 안내 문구는 실제 Jira 내용으로 모두 교체합니다. 담당자가 확인된 경우에만 `담당: <담당자>` 한 줄을 추가하고 GitHub assignee를 지정합니다. 제목은 `[<Jira-Key>] <Jira 이슈 제목>`으로 작성합니다. 웹에서 생성할 때는 템플릿 본문을 이슈 입력란에 복사하고, CLI에서는 실제 줄바꿈이 있는 `.github_issue_body_temp.md`에 작성하여 `gh issue create --title "[$JIRA_KEY] <Jira 이슈 제목>" --body-file .github_issue_body_temp.md`로 생성합니다. 생성 후 번호와 URL을 확인하고 임시 파일을 삭제합니다. 승인이나 조회가 불가능하면 Issue를 추측해 만들지 말고 이 단계를 중단합니다.
+
+---
+
 ## 1. 현재 상태 및 변경사항 분석 (주제별 분리 필수!)
 
 ```bash
@@ -174,8 +190,9 @@ Jira 설명의 `완료 조건`을 항목별로 읽고, 전체 diff와 실제 검
 1. 주제마다 기존 Jira 이슈를 선택하거나 `.github/jira_issue_template.md`로 새 이슈를 생성합니다.
 2. `dev` 기준으로 `<type>/<Jira-Key>-<작업명>` 브랜치를 각각 생성합니다.
 3. 해당 주제의 파일만 선택적으로 스테이징하고 `[<Jira-Key>] <type>: <설명>` 형식으로 커밋합니다.
-4. 각 브랜치를 push하고 `dev` 대상 PR과 최신 HEAD 기준 AI 리뷰 댓글을 각각 생성합니다.
-5. 생성된 Jira Key, 브랜치와 PR URL을 주제별로 최종 보고합니다.
+4. 각 Jira 이슈에 대응하는 GitHub Issue를 0-3단계에 따라 확인하거나 생성합니다.
+5. 각 브랜치를 push하고 `dev` 대상 PR과 최신 HEAD 기준 AI 리뷰 댓글을 각각 생성합니다.
+6. Jira Key, GitHub Issue 번호, 브랜치와 PR URL을 주제별로 최종 보고합니다.
 
 작업 파일을 다른 브랜치로 분리할 때는 워킹 트리의 사용자 변경을 보존하고, 한 주제의 변경을 다른 Jira 이슈나 PR에 섞지 않습니다.
 
@@ -250,7 +267,7 @@ COMMITS=$(git log origin/$TARGET_BRANCH..$CURRENT_BRANCH --oneline)
    - 🧪 검증 절차 및 결과 (Testing Procedure: `.\gradlew.bat test`, Java 21 게임 동작, 기능/비기능 체크)
    - ✅ Jira 완료 조건 체크리스트 (Jira 문구를 그대로 복사하고 충족된 항목만 체크)
    - 📝 추가 참고사항 (Additional Notes)
-   - 🔗 연관 Jira (`$JIRA_KEY` 및 이슈 URL)
+   - 🔗 연관 이슈 (Jira의 `$JIRA_KEY` 및 URL, 대응 GitHub Issue 번호. 이 PR이 해결하면 `Closes #<번호>`)
    - 🔀 Merge 가이드 (Target: `<TARGET_BRANCH>`, Squash and Merge 권장)
 
 2. **AI 코드 리뷰 작성:** 반드시 **`.github/code_review_template.md`** 파일의 테트리스 체크포인트(게임플레이, 20x10 보드, 7종 블럭, 색맹 모드, 점수판 영속성, Java 21 호환 등)와 3단계 우선순위(🔴치명적 / ⚠️경고 / 💡제안)를 확인합니다.
@@ -279,7 +296,7 @@ COMMITS=$(git log origin/$TARGET_BRANCH..$CURRENT_BRANCH --oneline)
 
 ### Step 3: Jira Key 기반 PR 제목 정의
 
-브랜치명에서 Jira Key와 브랜치 유형을 추출하여 커밋 메시지와 동일한 형식의 PR 제목을 만듭니다. Jira 이슈는 0-2단계에서 존재가 확인되어 있어야 하며, 이 워크플로우에서는 Jira 또는 GitHub Issue를 생성하지 않습니다. GitHub-Jira 연동이 활성화된 환경에서는 브랜치, 커밋, PR 제목의 Jira Key를 기준으로 개발 정보가 자동 연결됩니다.
+브랜치명에서 Jira Key와 브랜치 유형을 추출하여 커밋 메시지와 동일한 형식의 PR 제목을 만듭니다. Jira 이슈는 0-2단계에서 존재가 확인되어 있어야 하고, 대응 GitHub Issue는 0-3단계에서 확정되어 있어야 합니다. PR 본문에 Jira 링크와 GitHub Issue 번호를 함께 적고, 이 PR이 해당 작업을 해결할 때만 `Closes #<번호>`를 사용합니다. GitHub-Jira 연동이 활성화된 환경에서는 브랜치, 커밋, PR 제목의 Jira Key를 기준으로 개발 정보가 자동 연결됩니다.
 
 ```bash
 # 예: feat/TET-12-menu-colorblind-ui -> [TET-12] feat: 색맹 모드 메뉴 UI 구현
@@ -384,6 +401,7 @@ rm -f .pr_body_temp.md .pr_review_temp.md
 | PR 상태 | 신규 생성 / 업데이트 / 변경없음 |
 | PR URL | `<URL>` |
 | Jira | `$JIRA_KEY` |
+| GitHub Issue | `#<번호>` 및 URL |
 | Jira 정합성 | 일치 / 보완 후 일치 / 별도 이슈로 분리 |
 | PR의 Jira 완료 조건 | `<충족 수>/<전체 수>` 및 미완료·확인 불가 사유 |
 | Target | `$TARGET_BRANCH` (`dev`) |
@@ -397,7 +415,7 @@ rm -f .pr_body_temp.md .pr_review_temp.md
 2. **PR 본문과 AI 리뷰 분리** - PR 본문은 `.github/pull_request_template.md` 기반으로 작성하고, AI 리뷰는 `.github/code_review_template.md` 기반으로 분석하여 별도 댓글(`gh pr comment`)로 분리 등록합니다.
 3. **PR 존재 확인 필수** - `gh pr view`로 먼저 확인 후 신규 생성 또는 업데이트를 결정합니다.
 4. **다중 주제 분할 필수** - 변경사항에 둘 이상의 성격(예: 게임 로직 + UI 개편)이 섞인 경우, 반드시 브랜치를 분할하여 개별 PR을 생성합니다.
-5. **Jira Key 및 실제 이슈 필수**: 브랜치명에는 `[A-Z0-9]+-[0-9]+` 형식의 Jira Key가 반드시 포함되어야 하며, `TET` 프로젝트에 실제로 존재하는 이슈여야 합니다. 이 문서에서는 Jira 또는 GitHub Issue를 생성하지 않습니다.
+5. **Jira Key 및 실제 이슈 필수**: 브랜치명에는 `[A-Z0-9]+-[0-9]+` 형식의 Jira Key가 반드시 포함되어야 하며, `TET` 프로젝트에 실제로 존재하는 이슈여야 합니다. 대응 GitHub Issue는 중복 확인 후 4~5줄 요약과 Jira 링크로 작성합니다.
 6. **Jira-작업 범위 정합성 필수**: 커밋 및 push 전에 Jira의 목적·범위·완료 조건과 전체 diff를 비교합니다. 독립 작업을 기존 Jira에 억지로 포함하지 않습니다.
 7. **Jira 완료 조건은 PR에서 체크**: Jira의 완료 조건을 PR 본문에 그대로 복사하고, 실제 diff, 검증 결과와 원격 상태로 확인된 항목만 체크합니다. Jira 설명은 체크 상태 기록을 위해 수정하지 않습니다.
 8. **커밋/PR 제목 형식 일치**: 커밋 메시지와 PR 제목은 `[Jira-Key] <type>: <설명>` 형식을 사용하고, `<type>`은 현재 브랜치 접두사와 일치해야 합니다. (예: `test/TET-12-score-coverage` → `[TET-12] test: 점수 계산 테스트 및 커버리지 확보`)
