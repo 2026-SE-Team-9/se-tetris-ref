@@ -26,7 +26,7 @@ Jira에는 작업의 목적, 범위와 완료 조건을 기록하고, PR에는 �
 | **GitHub** | Jira 이슈 요약, 코드, 브랜치, PR, 리뷰 |
 
 Jira 이슈에 대응하는 GitHub Issue를 만들어 작업과 해결 내역을 GitHub에서도 추적합니다. 상세 내용과 진행 상태의 기준은 Jira이며, GitHub Projects는 사용하지 않습니다.
-GitHub Issue는 `.github/github_issue_template.md`의 본문을 사용해 배경, 할 일과 완료 기준을 간단히 기록합니다. Jira 이슈에 대응할 때는 세 항목을 Jira 내용으로 요약하고 `관련 링크`에 Jira URL을 넣어 4줄로 작성합니다. 담당자가 확인되면 담당 1줄을 추가합니다. 같은 Jira Key의 GitHub Issue가 이미 있는지 먼저 확인하여 중복 생성하지 않습니다.
+GitHub Issue는 `.github/github_issue_template.md`를 참고해 작업의 목적과 할 일을 간결하게 요약합니다. 분량은 작업 규모에 맞추고 정해진 줄 수를 강제하지 않습니다. Jira 이슈에 대응할 때는 `Jira: [TET-12](https://kyun648.atlassian.net/browse/TET-12)`처럼 링크를 넣고, 담당 계정이 확인되면 GitHub 담당자로 지정합니다. 같은 Jira Key의 GitHub Issue가 이미 있는지 먼저 확인하여 중복 생성하지 않습니다.
 
 ---
 
@@ -278,7 +278,7 @@ Jira 이슈 화면 오른쪽 **개발(Development)** 영역에서 연결된 브�
 1. Backlog에서 우선순위가 높은 이슈의 담당자, 작업 범위와 완료 조건을 정리합니다.
 2. 바로 시작할 수 있는 이슈를 보드의 `해야 할 일`로 옮깁니다.
 3. 실제 작업을 시작할 때 `진행 중`으로 옮기고, `dev`에서 Jira Key가 포함된 브랜치를 생성합니다.
-4. 같은 Jira Key의 GitHub Issue가 있는지 확인하고, 없으면 Jira 내용을 4~5줄로 요약해 링크와 함께 등록합니다.
+4. 같은 Jira Key의 GitHub Issue가 있는지 확인하고, 없으면 Jira 내용을 간결하게 요약해 링크와 함께 등록합니다.
 5. 작업 중 범위가 달라지면 Jira 이슈와 전체 diff의 정합성을 다시 확인합니다.
 6. `dev` 대상 PR에 Jira 링크와 GitHub Issue 번호를 함께 적습니다. PR이 해당 작업을 해결하면 `Closes #<번호>`로 연결하고 Jira 이슈를 `검토 중`으로 옮깁니다.
 7. PR 병합 후 GitHub Issue 종료 여부와 Jira 완료 조건을 확인하고 Jira 이슈를 `완료`로 옮깁니다.
