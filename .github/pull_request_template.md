@@ -19,3 +19,4 @@
 
 ## 🔗 연관 이슈 (Related Issues)
 - Jira: <!-- 예: [TET-12](https://kyun648.atlassian.net/browse/TET-12) -->
+- GitHub Issue: <!-- 예: Closes #123. 이 PR이 이슈를 해결하지 않으면 #123만 적으세요. -->
