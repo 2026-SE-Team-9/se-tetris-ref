@@ -117,7 +117,7 @@ gh issue list --state all --search "$JIRA_KEY" --json number,title,body,state,ur
 - 기존 Issue의 내용이 템플릿 형식과 다르면 수정안을 제시하고 승인 후 갱신합니다. 후보가 여럿이면 연결할 번호를 확인받습니다.
 - 대응 Issue가 없으면 `.github/github_issue_template.md`의 본문을 Jira 내용으로 채워 보여주고, 사용자 승인 후 생성합니다. `관련 링크`에는 Jira URL을 넣어 전체 본문을 4줄로 작성합니다. 요약을 위해 Jira의 상세 설명을 그대로 복사하거나 확인되지 않은 완료 기준을 만들지 않습니다.
 
-템플릿의 대괄호 안내 문구는 실제 Jira 내용으로 모두 교체합니다. 담당자가 확인된 경우에만 `담당: <담당자>` 한 줄을 추가하고 GitHub assignee를 지정합니다. 제목은 `[<Jira-Key>] <Jira 이슈 제목>`으로 작성합니다. 웹에서 생성할 때는 템플릿 본문을 이슈 입력란에 복사하고, CLI에서는 실제 줄바꿈이 있는 `.github_issue_body_temp.md`에 작성하여 `gh issue create --title "[$JIRA_KEY] <Jira 이슈 제목>" --body-file .github_issue_body_temp.md`로 생성합니다. 생성 후 번호와 URL을 확인하고 임시 파일을 삭제합니다. 승인이나 조회가 불가능하면 Issue를 추측해 만들지 말고 이 단계를 중단합니다.
+템플릿의 대괄호 안내 문구는 실제 Jira 내용으로 모두 교체합니다. 담당자가 확인된 경우에만 `담당: <담당자>` 한 줄을 추가하고 GitHub assignee를 지정합니다. 제목은 `[<Jira-Key>] <Jira 이슈 제목>`으로 작성합니다. 웹에서 생성할 때는 템플릿 본문을 이슈 입력란에 복사하고, CLI에서는 실제 줄바꿈이 있는 `.github_issue_body_temp.md`에 작성하여 `gh issue create --title "[$JIRA_KEY] <Jira 이슈 제목>" --body-file .github_issue_body_temp.md`로 생성합니다. 담당 GitHub 계정을 확인했다면 CLI 명령에 `--assignee <GitHub 로그인>`도 추가합니다. 생성 후 번호와 URL을 확인하고 임시 파일을 삭제합니다. 승인이나 조회가 불가능하면 Issue를 추측해 만들지 말고 이 단계를 중단합니다.
 
 ---
 
