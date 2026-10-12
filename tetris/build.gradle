@@ -35,7 +35,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = 'seoultech.se.tetris.legacy.main.Tetris'
+    mainClass = 'seoultech.se.tetris.ui.TetrisApplication'
 }
 
 tasks.named('test') {
