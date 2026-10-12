@@ -9,15 +9,21 @@ import seoultech.se.tetris.ui.ScreenNavigator;
 public class StartMenuFrame extends JFrame {
 
     private static final long serialVersionUID = 1L;
+    private final StartMenuPanel panel;
 
     public StartMenuFrame(ScreenNavigator navigator) {
         super("SeoulTech SE Tetris");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        StartMenuPanel panel = new StartMenuPanel(StartMenuModel.createDefault(navigator));
+        panel = new StartMenuPanel(StartMenuModel.createDefault(navigator));
         add(panel);
         pack();
         setLocationRelativeTo(null);
         setResizable(false);
+    }
+
+    /** 화면을 표시한 뒤 키보드 포커스를 메뉴에 준다. */
+    public void showMenu() {
+        setVisible(true);
         panel.requestFocusInWindow();
     }
 
@@ -29,6 +35,6 @@ public class StartMenuFrame extends JFrame {
             @Override public void navigateToScoreboard() { System.out.println("스코어보드 선택"); }
             @Override public void navigateToGameOver(int finalScore) { System.out.println("게임 오버: " + finalScore); }
             @Override public void exitProgram() { System.exit(0); }
-        }).setVisible(true));
+        }).showMenu());
     }
 }
