@@ -50,7 +50,9 @@ public class GameFrame extends JFrame {
             @Override public void onGameOver(int finalScore) { timer.stop(); panel.repaint(); }
         });
 
-        GameKeyInput input = new GameKeyInput(new PropertiesKeyConfigService(), engine, engine,
+        PropertiesKeyConfigService keyConfig = new PropertiesKeyConfigService();
+        keyConfig.load();
+        GameKeyInput input = new GameKeyInput(keyConfig, engine, engine,
                 () -> SwingUtilities.invokeLater(() -> {
                     panel.repaint();
                     int choice = JOptionPane.showConfirmDialog(frame, "계속하시겠습니까?", "일시정지",
