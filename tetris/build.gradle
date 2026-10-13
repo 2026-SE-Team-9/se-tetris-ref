@@ -93,6 +93,7 @@ tasks.register('jpackage', Exec) {
     def outputDirectory = layout.buildDirectory.dir('jpackage')
 
     inputs.dir(inputDirectory)
+    inputs.file('assets/tetris.ico')
     outputs.dir(outputDirectory)
 
     doFirst {
@@ -103,6 +104,7 @@ tasks.register('jpackage', Exec) {
                 '--input', inputDirectory.get().asFile,
                 '--main-jar', tasks.named('jar').get().archiveFileName.get(),
                 '--main-class', application.mainClass.get(),
+                '--icon', file('assets/tetris.ico'),
                 '--dest', outputDirectory.get().asFile
     }
 }
