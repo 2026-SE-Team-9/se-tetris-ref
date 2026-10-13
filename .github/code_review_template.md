@@ -1,8 +1,10 @@
 # 🤖 AI 코드 리뷰 가이드라인 및 템플릿 (Code Review Guidelines & Template)
 
-본 문서는 `docs/TeamProject_Req1.pdf` 및 `docs/requirements-1.md`의 1차 요구사항과 `docs/project-conventions.md`의 팀 규칙을 기준으로 PR의 코드 변경사항(diff)을 검토하고, 결과를 PR 댓글(Comment)에 남기기 위한 가이드입니다.
+본 문서는 `docs/TeamProject_Req1.pdf` 및 `docs/requirements-1.md`의 1차 요구사항, `docs/TeamProject_Req2.pdf` 및 `docs/requirements-2.md`의 2차 요구사항과 `docs/project-conventions.md`의 팀 규칙을 기준으로 PR의 코드 변경사항(diff)을 검토하고, 결과를 PR 댓글(Comment)에 남기기 위한 가이드입니다.
 
 > **규칙 우선:** 이 문서와 `docs/project-conventions.md`의 내용이 다르면 `docs/project-conventions.md`를 따릅니다.
+
+> **차수 우선:** 1차와 2차 요구사항이 다르면 2차를 따릅니다. 바뀐 1차 결정은 `docs/requirements-2.md`의 「1차 결정 변경 내역」에서 확인합니다.
 
 > **원칙:** 리뷰는 정보 제공 및 품질 개선 목적의 **Non-blocking Report**입니다. 위험이나 미충족 요구사항을 발견해도 PR 생성을 자동으로 차단하지 않습니다.
 
@@ -51,7 +53,7 @@
 
 ### 기본 테트리스 게임
 - [ ] 보드가 20줄 x 10칸이며 경계와 빈 칸이 정확히 처리되는가?
-- [ ] I, J, L, O, S, T, Z 7종 블럭이 동일한 확률로 생성되는가?
+- [ ] I, J, L, O, S, T, Z 7종 블럭이 요구사항 명세와 동일한 확률로 생성되는가?
 - [ ] 블럭이 기본 1초에 1칸씩 자동 낙하하고, 블럭 생성 수 또는 행 삭제에 따라 속도가 증가하는가?
 - [ ] 좌/우/아래 한 칸 이동, 시계방향 90도 회전, 즉시 낙하가 가능한가?
 - [ ] 이동/회전 시 보드 밖 이동과 쌓인 블럭과의 충돌을 막는가?
