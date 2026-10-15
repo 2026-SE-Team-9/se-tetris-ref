@@ -4,18 +4,12 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.KeyEventDispatcher;
-import java.awt.KeyboardFocusManager;
 import java.awt.Graphics;
+import java.awt.GridLayout;
 import java.awt.Rectangle;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.awt.event.KeyEvent;
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.OptionalInt;
 import javax.swing.BoxLayout;
 import javax.swing.Box;
 import javax.swing.BorderFactory;
@@ -32,7 +26,6 @@ import javax.swing.plaf.basic.BasicComboBoxUI;
 import seoultech.se.tetris.config.AppSettings;
 import seoultech.se.tetris.config.AppSettings.ScreenSize;
 import seoultech.se.tetris.config.KeyBindingEditor;
-import seoultech.se.tetris.config.KeyConfigService.GameAction;
 import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
 import seoultech.se.tetris.engine.Difficulty;
@@ -49,17 +42,13 @@ public final class SettingsPanel extends JPanel {
 
     private final PropertiesAppSettingsService settings;
     private final KeyBindingEditor keyEditor;
+    private final KeyBindingsPanel keyBindings;
     private final ScoreRepository scores;
     private final boolean allowScoreReset;
     private final Runnable onClose;
     private final JComboBox<ScreenSize> screenSize = new JComboBox<>(ScreenSize.values());
     private final JComboBox<Difficulty> difficulty = new JComboBox<>(Difficulty.values());
     private final JCheckBox colorBlind = new JCheckBox("색맹 모드");
-    private final Map<GameAction, JButton[]> keyButtons = new EnumMap<>(GameAction.class);
-    private final KeyEventDispatcher keyCapture = this::captureKey;
-    private GameAction captureAction;
-    private boolean captureMain;
-    private int capturedCode = KeyEvent.VK_UNDEFINED;
 
     public SettingsPanel(PropertiesAppSettingsService settings,
             PropertiesKeyConfigService keys, ScoreRepository scores,
@@ -68,6 +57,7 @@ public final class SettingsPanel extends JPanel {
         this.settings = Objects.requireNonNull(settings, "settings");
         this.keyEditor = new KeyBindingEditor(Objects.requireNonNull(keys, "keys"),
                 Objects.requireNonNull(onKeysSaved, "onKeysSaved"));
+        this.keyBindings = new KeyBindingsPanel(keyEditor);
         this.scores = Objects.requireNonNull(scores, "scores");
         this.allowScoreReset = allowScoreReset;
         this.onClose = Objects.requireNonNull(onClose, "onClose");
@@ -136,23 +126,7 @@ public final class SettingsPanel extends JPanel {
         hint.setForeground(MUTED);
         content.add(hint);
         content.add(Box.createVerticalStrut(12));
-        JPanel bindings = new JPanel(new GridLayout(GameAction.values().length, 3, 10, 8));
-        bindings.setBackground(BACKGROUND);
-        bindings.add(label("동작"));
-        bindings.add(label("기본 키"));
-        bindings.add(label("보조 키"));
-        for (GameAction action : GameAction.values()) {
-            if (action == GameAction.PAUSE_MENU) {
-                continue;
-            }
-            bindings.add(label(actionLabel(action)));
-            JButton main = keyButton(action, true);
-            JButton sub = keyButton(action, false);
-            keyButtons.put(action, new JButton[] {main, sub});
-            bindings.add(main);
-            bindings.add(sub);
-        }
-        content.add(bindings);
+        content.add(keyBindings);
 
         JPanel actions = new JPanel();
         actions.setBackground(BACKGROUND);
@@ -183,7 +157,7 @@ public final class SettingsPanel extends JPanel {
         add(actions, BorderLayout.SOUTH);
     }
 
-    private static JLabel label(String text) {
+    static JLabel label(String text) {
         JLabel label = new JLabel(text);
         label.setFont(BODY_FONT);
         label.setForeground(Color.WHITE);
@@ -225,7 +199,7 @@ public final class SettingsPanel extends JPanel {
         });
     }
 
-    private static void styleButton(JButton button, boolean accent) {
+    static void styleButton(JButton button, boolean accent) {
         button.setUI(new BasicButtonUI());
         button.setFont(BODY_FONT);
         button.setBackground(accent ? Color.CYAN : SURFACE);
@@ -251,64 +225,8 @@ public final class SettingsPanel extends JPanel {
                 BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
-    private JButton keyButton(GameAction action, boolean main) {
-        JButton button = new JButton();
-        styleButton(button, false);
-        button.setToolTipText(actionLabel(action) + (main ? " 기본 키 변경" : " 보조 키 변경"));
-        button.setPreferredSize(new java.awt.Dimension(110, button.getPreferredSize().height));
-        button.addActionListener(event -> beginKeyCapture(action, main, button));
-        return button;
-    }
-
-    private void beginKeyCapture(GameAction action, boolean main, JButton button) {
-        if (captureAction == null) {
-            KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyCapture);
-        }
-        captureAction = action;
-        captureMain = main;
-        capturedCode = KeyEvent.VK_UNDEFINED;
-        refreshKeys();
-        button.setText("입력 대기…");
-        button.setForeground(Color.YELLOW);
-        button.requestFocusInWindow();
-    }
-
-    /** 키 캡처 동안 버튼의 기본 키 동작을 막고 편집기에만 전달한다. */
-    private boolean captureKey(KeyEvent event) {
-        if (captureAction == null) {
-            return false;
-        }
-        if (event.getID() == KeyEvent.KEY_PRESSED && capturedCode == KeyEvent.VK_UNDEFINED) {
-            capturedCode = event.getKeyCode();
-            if (captureMain) {
-                keyEditor.captureMainKey(captureAction, capturedCode);
-            } else {
-                keyEditor.captureSubKey(captureAction, capturedCode);
-            }
-            refreshKeys();
-        } else if (event.getID() == KeyEvent.KEY_RELEASED
-                && capturedCode == event.getKeyCode()) {
-            endKeyCapture();
-        }
-        event.consume();
-        return true;
-    }
-
-    private void endKeyCapture() {
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(keyCapture);
-        captureAction = null;
-        capturedCode = KeyEvent.VK_UNDEFINED;
-    }
-
-    private void cancelKeyCapture() {
-        if (captureAction != null) {
-            endKeyCapture();
-            refreshKeys();
-        }
-    }
-
     private void close() {
-        cancelKeyCapture();
+        keyBindings.cancelKeyCapture();
         onClose.run();
     }
 
@@ -317,39 +235,23 @@ public final class SettingsPanel extends JPanel {
         screenSize.setSelectedItem(current.screenSize());
         difficulty.setSelectedItem(current.difficulty());
         colorBlind.setSelected(current.colorBlind());
-        refreshKeys();
-    }
-
-    private void refreshKeys() {
-        for (GameAction action : keyButtons.keySet()) {
-            var binding = keyEditor.getDraftBinding(action);
-            JButton[] buttons = keyButtons.get(action);
-            buttons[0].setText(keyLabel(binding.mainKeyCode()));
-            buttons[1].setText(keyLabel(binding.subKeyCode()));
-            buttons[0].setForeground(Color.WHITE);
-            buttons[1].setForeground(Color.WHITE);
-        }
+        keyBindings.refreshKeys();
     }
 
     private void restoreDefaults() {
-        cancelKeyCapture();
+        keyBindings.cancelKeyCapture();
         screenSize.setSelectedItem(AppSettings.DEFAULT.screenSize());
         difficulty.setSelectedItem(AppSettings.DEFAULT.difficulty());
         colorBlind.setSelected(AppSettings.DEFAULT.colorBlind());
         keyEditor.restoreDefaults();
-        refreshKeys();
+        keyBindings.refreshKeys();
     }
 
     private void saveSettings() {
-        cancelKeyCapture();
+        keyBindings.cancelKeyCapture();
         if (!keyEditor.canSave()) {
             JOptionPane.showMessageDialog(this, "모든 동작에 메인 키가 필요합니다.", "설정", JOptionPane.WARNING_MESSAGE);
-            for (GameAction action : keyButtons.keySet()) {
-                if (keyEditor.getDraftBinding(action).mainKeyCode().isEmpty()) {
-                    keyButtons.get(action)[0].requestFocusInWindow();
-                    break;
-                }
-            }
+            keyBindings.focusMissingMainKey();
             return;
         }
         try {
@@ -365,7 +267,7 @@ public final class SettingsPanel extends JPanel {
     }
 
     private void clearScores() {
-        cancelKeyCapture();
+        keyBindings.cancelKeyCapture();
         if (!allowScoreReset) {
             return;
         }
@@ -379,32 +281,5 @@ public final class SettingsPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, e.getMessage(), "초기화 실패", JOptionPane.ERROR_MESSAGE);
             }
         }
-    }
-
-    private static String keyLabel(OptionalInt code) {
-        if (code.isEmpty()) {
-            return "";
-        }
-        return switch (code.getAsInt()) {
-            case KeyEvent.VK_ESCAPE -> "Esc";
-            case KeyEvent.VK_LEFT -> "←";
-            case KeyEvent.VK_RIGHT -> "→";
-            case KeyEvent.VK_UP -> "↑";
-            case KeyEvent.VK_DOWN -> "↓";
-            case KeyEvent.VK_SPACE -> "Space";
-            default -> KeyEvent.getKeyText(code.getAsInt());
-        };
-    }
-
-    private static String actionLabel(GameAction action) {
-        return switch (action) {
-            case MOVE_LEFT -> "왼쪽 이동";
-            case MOVE_RIGHT -> "오른쪽 이동";
-            case SOFT_DROP -> "아래 이동";
-            case HARD_DROP -> "즉시 낙하";
-            case ROTATE -> "시계 방향 회전";
-            case ROTATE_COUNTERCLOCKWISE -> "반시계 방향 회전";
-            case PAUSE_MENU -> "일시정지 메뉴";
-        };
     }
 }
