@@ -38,7 +38,7 @@ public class GameFrame extends JFrame {
         PropertiesAppSettingsService settingsService = new PropertiesAppSettingsService();
         settingsService.load();
         var settings = settingsService.current();
-        TetrisEngine engine = new TetrisEngine(settings.difficulty());
+        TetrisEngine engine = new TetrisEngine();
         GamePanel panel = new GamePanel(engine, settings);
         GameFrame frame = new GameFrame(panel);
 

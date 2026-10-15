@@ -111,7 +111,7 @@ public final class SettingsPanel extends JPanel {
         options.add(colorBlind);
         content.add(options);
         content.add(Box.createVerticalStrut(8));
-        JLabel sizeHint = label("화면 크기는 저장 후 메뉴와 다음 게임에 적용됩니다. 난이도는 다음 게임부터 적용됩니다.");
+        JLabel sizeHint = label("화면 크기는 저장 후 적용됩니다. 난이도는 현재 게임에 적용되지 않습니다.");
         sizeHint.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
         sizeHint.setForeground(MUTED);
         content.add(sizeHint);
