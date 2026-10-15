@@ -3,36 +3,47 @@ package seoultech.se.tetris.score;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import seoultech.se.tetris.engine.Difficulty;
+import seoultech.se.tetris.engine.GameMode;
 
 /**
- * 점수 기록의 순위를 관리한다.
+ * 게임 모드별 점수 기록의 순위를 관리한다.
  *
  * <p>점수가 높은 순으로 정렬해 보관하며, 정해진 개수를 넘으면 낮은 점수부터 밀려난다.
  *
  * <p><b>파일 입출력을 하지 않는다.</b> 저장과 불러오기는 {@link ScoreRepository}의 역할이고,
  * 이 클래스는 순위 계산만 담당한다. 파일을 다루지 않으므로 파일 없이 단위 테스트가 가능하다.
+ *
+ * <p>2차 요구사항에 따라 일반 모드와 아이템 모드의 기록을 따로 관리한다.
+ * 각각의 모드별로 {@link ScoreBoard}를 만들어 {@link ScoreRepository}에서 관리한다.
  */
 public class ScoreBoard {
 
-    /** 기본 보관 개수. 요구사항은 "최소 상위 10개"다. */
-    public static final int DEFAULT_CAPACITY = 10;
+    /** 최소 보관 개수. 요구사항에 따라 "최소 상위 10개" */
+    public static final int MIN_CAPACITY = 10;
+
+    /** 기본 보관 개수. MIN_CAPACITY 이상의 값으로 지정한다. */
+    public static final int DEFAULT_CAPACITY = MIN_CAPACITY;
 
     private final int capacity;
     private final List<ScoreRecord> records = new ArrayList<>();
+    private final GameMode mode;
 
-    public ScoreBoard() {
-        this(DEFAULT_CAPACITY);
+    /** 모드는 객체 생성 시 무조건 지정 */
+    public ScoreBoard(GameMode mode) {
+        this(mode, DEFAULT_CAPACITY);
     }
 
     /**
      * 보관 개수를 지정해 만든다.
      *
-     * <p>화면에는 10개씩 보여주더라도 더 많이 보관하면 페이지를 넘겨 볼 수 있다.
+     * <p>화면에는 10개씩 보여주더라도 더 많이 보관하면 페이지를 넘기는 방식으로 볼 수 있다.
      */
-    public ScoreBoard(int capacity) {
-        if (capacity < DEFAULT_CAPACITY) {
+    public ScoreBoard(GameMode mode, int capacity) {
+        this.mode = Objects.requireNonNull(mode, "모드는 null일 수 없습니다.");
+        if (capacity < MIN_CAPACITY) {
             throw new IllegalArgumentException(
-                    "보관 개수는 " + DEFAULT_CAPACITY + " 이상이어야 합니다: " + capacity);
+                    "보관 개수는 " + MIN_CAPACITY + " 이상이어야 합니다: " + capacity);
         }
         this.capacity = capacity;
     }
@@ -42,8 +53,12 @@ public class ScoreBoard {
      *
      * <p>순서가 뒤섞여 있어도 점수 순으로 정렬하며, 보관 개수를 넘는 기록은 버린다.
      *
-     * <p>{@link #add}와 같은 기준으로 잘못된 기록({@code null} 기록, {@code null} 이름, 음수 점수)은
-     * 건너뛴다. 저장 파일이 일부 손상되어도 나머지 기록으로 계속 진행하기 위한 것이다.
+     * <p>{@link #add}와 같은 기준으로 잘못된 기록({@code null} 기록, {@code null} 이름,
+     * 음수 점수, 모드/난이도가 없는 기록)은 건너뛴다.
+     * 저장 파일이 일부 손상되어도 나머지 기록으로 계속 진행할 수 있도록 하기 위함이다.
+     *
+     * <p>저장소가 모든 기록을 하나의 목록으로 넘겨도 자신의 모드의 기록만 선택해서 가진다.
+     * 이 경우 잘못된 기록으로 간주하지 않는다.
      *
      * @return 잘못되어 건너뛴 기록 수
      */
@@ -53,6 +68,10 @@ public class ScoreBoard {
         records.clear();
         int skipped = 0;
         for (ScoreRecord record : loaded) {
+            if (isOtherMode(record)) {
+                continue;
+            }
+
             if (isValid(record)) {
                 records.add(record);
             } else {
@@ -69,19 +88,22 @@ public class ScoreBoard {
      * <p>반환된 순위로 방금 등록한 기록을 찾아 강조 표시할 수 있다.
      * 이름과 점수가 같은 기록이 이미 있어도, 방금 등록한 기록의 순위를 돌려준다.
      *
+     * <p>기록의 모드는 보드와 동일하게 지정된다.
+     *
      * @return 등록된 기록의 순위(1부터). 순위에 들지 못해 밀려났으면 -1
      */
-    public int add(String playerName, int score) {
+    public int add(String playerName, int score, Difficulty difficulty) {
         Objects.requireNonNull(playerName, "이름은 null일 수 없습니다.");
         if (score < 0) {
             throw new IllegalArgumentException("점수는 음수일 수 없습니다: " + score);
         }
+        Objects.requireNonNull(difficulty, "난이도는 null일 수 없습니다.");
 
-        ScoreRecord added = new ScoreRecord(playerName, score);
+        ScoreRecord added = new ScoreRecord(playerName, score, mode, difficulty);
         records.add(added);
         sortAndTrim();
 
-        // record는 이름과 점수가 같으면 equals가 같으므로, 값이 아니라 방금 만든 객체로 찾는다
+        // record는 모든 값이 같으면 equals가 같다고 판정하므로, 같은 기록을 찾을 때 값이 아니라 방금 만든 객체로 찾는다
         for (int i = 0; i < records.size(); i++) {
             if (records.get(i) == added) {
                 return i + 1;
@@ -178,9 +200,22 @@ public class ScoreBoard {
         return capacity;
     }
 
+    public GameMode mode() {
+        return mode;
+    }
+
+    /** record가 이 보드의 모드와 다른지 판단한다. 양쪽의 null값 여부도 동시에 검사한다. */
+    private boolean isOtherMode(ScoreRecord record) {
+        return record != null && record.mode() != null && record.mode() != mode;
+    }
+
     /** {@link #add}와 같은 기준으로 기록이 유효한지 판단한다. */
     private static boolean isValid(ScoreRecord record) {
-        return record != null && record.playerName() != null && record.score() >= 0;
+        return record != null
+            && record.playerName() != null
+            && record.score() >= 0
+            && record.mode() != null
+            && record.difficulty() != null;
     }
 
     /**
