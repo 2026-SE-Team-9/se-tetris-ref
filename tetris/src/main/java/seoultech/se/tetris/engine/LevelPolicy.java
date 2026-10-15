@@ -1,5 +1,7 @@
 package seoultech.se.tetris.engine;
 
+import java.util.Objects;
+
 /**
  * 레벨과 낙하 속도를 결정한다.
  *
@@ -14,7 +16,7 @@ package seoultech.se.tetris.engine;
  *
  * <p>레벨은 <b>1부터</b> 시작한다. 시작 레벨은 상수로 저장한다.
  *
- * <p>상태를 갖지 않으므로 같은 입력에 항상 같은 결과를 돌려준다.
+ * <p>생성 시 받은 난이도를 보관하며, 같은 난이도와 입력에는 같은 결과를 돌려준다.
  */
 
 public class LevelPolicy {
@@ -40,7 +42,15 @@ public class LevelPolicy {
     public static final int MIN_INTERVAL_MS = 100;
 
     /** 레벨이 1 오를 때마다 낙하 간격에 곱하는 비율. */
-    private static final double DECAY_PER_LEVEL = 0.8;
+    private final Difficulty difficulty;
+
+    public LevelPolicy() {
+        this(Difficulty.DEFAULT);
+    }
+
+    public LevelPolicy(Difficulty difficulty) {
+        this.difficulty = Objects.requireNonNull(difficulty, "difficulty");
+    }
 
     /**
      * 현재 레벨을 계산한다.
@@ -66,7 +76,12 @@ public class LevelPolicy {
     public int dropIntervalMs(int level) {
         requireValidLevel(level);
 
-        double interval = INITIAL_INTERVAL_MS * Math.pow(DECAY_PER_LEVEL, level - INITIAL_LEVEL);
+        double ratio = switch (difficulty) {
+            case EASY -> 0.84;
+            case NORMAL -> 0.80;
+            case HARD -> 0.76;
+        };
+        double interval = INITIAL_INTERVAL_MS * Math.pow(ratio, level - INITIAL_LEVEL);
         return Math.max(MIN_INTERVAL_MS, (int) Math.round(interval));
     }
 

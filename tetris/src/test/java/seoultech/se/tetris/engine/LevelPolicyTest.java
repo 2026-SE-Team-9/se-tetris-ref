@@ -81,6 +81,14 @@ class LevelPolicyTest {
     class DropInterval {
 
         @Test
+        @DisplayName("난이도별 레벨 2 낙하 간격을 적용한다")
+        void difficultyChangesSpeedIncrease() {
+            assertEquals(840, new LevelPolicy(Difficulty.EASY).dropIntervalMs(2));
+            assertEquals(800, new LevelPolicy(Difficulty.NORMAL).dropIntervalMs(2));
+            assertEquals(760, new LevelPolicy(Difficulty.HARD).dropIntervalMs(2));
+        }
+
+        @Test
         @DisplayName("레벨 1에서는 1초다")
         void initialIntervalIsOneSecond() {
             assertEquals(LevelPolicy.INITIAL_INTERVAL_MS,

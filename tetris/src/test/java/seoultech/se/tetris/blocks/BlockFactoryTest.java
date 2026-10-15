@@ -78,4 +78,27 @@ class BlockFactoryTest {
             assertEquals(first.next(), second.next());
         }
     }
+
+    /** 난이도별 I형 블럭 가중치가 명세한 분포에 들어오는지 확인한다. */
+    @Test
+    void weightedDifficultyChangesIBlockDistribution() {
+        assertIBlockShare(12, 12.0 / 72);
+        assertIBlockShare(8, 8.0 / 68);
+    }
+
+    private void assertIBlockShare(int weight, double expectedShare) {
+        BlockFactory factory = new BlockFactory(new Random(42), weight);
+        int trials = 100_000;
+        Map<BlockType, Integer> counts = new EnumMap<>(BlockType.class);
+        for (int i = 0; i < trials; i++) {
+            counts.merge(factory.next(), 1, Integer::sum);
+        }
+        for (BlockType type : BlockType.values()) {
+            double expected = trials * (type == BlockType.I
+                    ? expectedShare : 10.0 / (weight + 60));
+            int actual = counts.getOrDefault(type, 0);
+            assertTrue(Math.abs(actual - expected) <= expected * 0.05,
+                    type + " 블럭 가중치 " + weight + "의 분포가 허용 범위를 벗어났습니다: " + actual);
+        }
+    }
 }

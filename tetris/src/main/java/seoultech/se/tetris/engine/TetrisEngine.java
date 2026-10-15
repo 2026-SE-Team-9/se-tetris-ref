@@ -62,7 +62,16 @@ public class TetrisEngine implements GameState, GameController {
 
     /** 실제 게임용. 블럭의 등장 순서를 랜덤으로 설정한다. */
     public TetrisEngine() {
-        this(new BlockFactory(new Random()));
+        this(Difficulty.DEFAULT);
+    }
+
+    /** 선택한 난이도를 블럭 생성과 레벨별 낙하 간격에 적용한다. */
+    public TetrisEngine(Difficulty difficulty) {
+        this(new BlockFactory(new Random(), switch (Objects.requireNonNull(difficulty, "difficulty")) {
+            case EASY -> 12;
+            case NORMAL -> 10;
+            case HARD -> 8;
+        }), new Board(), difficulty);
     }
 
     /**
@@ -71,7 +80,7 @@ public class TetrisEngine implements GameState, GameController {
      * <p>시드를 고정한 {@link Random}을 넘기면 같은 순서가 재현되므로 테스트에 쓸 수 있다.
      */
     public TetrisEngine(BlockFactory blockFactory) {
-        this(blockFactory, new Board());
+        this(blockFactory, new Board(), Difficulty.DEFAULT);
     }
 
     /**
@@ -81,9 +90,13 @@ public class TetrisEngine implements GameState, GameController {
      * 같은 패키지의 테스트에서만 사용한다.
      */
     TetrisEngine(BlockFactory blockFactory, Board board) {
+        this(blockFactory, board, Difficulty.DEFAULT);
+    }
+
+    private TetrisEngine(BlockFactory blockFactory, Board board, Difficulty difficulty) {
         this.board = Objects.requireNonNull(board, "Board는 null일 수 없습니다.");
         this.blockFactory = Objects.requireNonNull(blockFactory, "BlockFactory는 null일 수 없습니다.");
-        this.levelPolicy = new LevelPolicy();
+        this.levelPolicy = new LevelPolicy(difficulty);
         this.scoreCalculator = new ScoreCalculator();
         start();
     }
