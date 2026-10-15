@@ -23,9 +23,7 @@ public final class TetrisApplication implements ScreenNavigator {
 
     @Override
     public void navigateToMenu() {
-        PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
-        settings.load();
-        menu = new StartMenuFrame(this, settings.current().screenSize());
+        menu = new StartMenuFrame(this);
         menu.showMenu();
     }
 
@@ -43,10 +41,7 @@ public final class TetrisApplication implements ScreenNavigator {
         PropertiesKeyConfigService keys = new PropertiesKeyConfigService();
         keys.load();
         menu.showSettings(new SettingsPanel(settings, keys, new CsvScoreRepository(),
-                true, () -> {}, () -> {
-                    menu.setScreenSize(settings.current().screenSize());
-                    menu.showMenu();
-                }));
+                true, () -> {}, () -> menu.showMenu()));
     }
 
     @Override

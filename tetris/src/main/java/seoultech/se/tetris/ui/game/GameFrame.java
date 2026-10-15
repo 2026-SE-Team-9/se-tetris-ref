@@ -8,7 +8,6 @@ import javax.swing.SwingUtilities;
 
 import seoultech.se.tetris.component.listener.GameEventListener;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
-import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.engine.TetrisEngine;
 import seoultech.se.tetris.ui.GameKeyInput;
 
@@ -35,11 +34,8 @@ public class GameFrame extends JFrame {
 
     /** 게임 화면을 연다. Swing 이벤트 스레드에서 호출한다. */
     public static void launch() {
-        PropertiesAppSettingsService settingsService = new PropertiesAppSettingsService();
-        settingsService.load();
-        var settings = settingsService.current();
         TetrisEngine engine = new TetrisEngine();
-        GamePanel panel = new GamePanel(engine, settings);
+        GamePanel panel = new GamePanel(engine);
         GameFrame frame = new GameFrame(panel);
 
         GameProgressTimer timer = new GameProgressTimer(engine, engine);

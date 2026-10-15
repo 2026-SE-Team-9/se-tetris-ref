@@ -3,7 +3,6 @@ package seoultech.se.tetris.ui.menu;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import seoultech.se.tetris.config.AppSettings.ScreenSize;
 import seoultech.se.tetris.ui.ScreenNavigator;
 import seoultech.se.tetris.ui.settings.SettingsPanel;
 
@@ -14,23 +13,13 @@ public class StartMenuFrame extends JFrame {
     private final StartMenuPanel panel;
 
     public StartMenuFrame(ScreenNavigator navigator) {
-        this(navigator, ScreenSize.MEDIUM);
-    }
-
-    public StartMenuFrame(ScreenNavigator navigator, ScreenSize size) {
         super("SeoulTech SE Tetris");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         panel = new StartMenuPanel(StartMenuModel.createDefault(navigator));
-        panel.setScreenSize(size);
         setContentPane(panel);
         pack();
         setLocationRelativeTo(null);
         setResizable(false);
-    }
-
-    /** 설정 저장 후 메뉴를 다시 표시할 때 새 크기를 적용한다. */
-    public void setScreenSize(ScreenSize size) {
-        panel.setScreenSize(size);
     }
 
     /** 화면을 표시한 뒤 키보드 포커스를 메뉴에 준다. */

@@ -12,20 +12,14 @@ public record AppSettings(ScreenSize screenSize, boolean colorBlind, Difficulty 
         Objects.requireNonNull(difficulty, "difficulty");
     }
 
-    /** 보드 한 칸의 크기를 기준으로 한 세 가지 화면 크기. */
+    /** 설정 화면에서 선택할 수 있는 세 가지 화면 크기. */
     public enum ScreenSize {
-        SMALL("작게", 24), MEDIUM("보통", 28), LARGE("크게", 36);
+        SMALL("작게"), MEDIUM("보통"), LARGE("크게");
 
         private final String label;
-        private final int cellPixels;
 
-        ScreenSize(String label, int cellPixels) {
+        ScreenSize(String label) {
             this.label = label;
-            this.cellPixels = cellPixels;
-        }
-
-        public int cellPixels() {
-            return cellPixels;
         }
 
         @Override
