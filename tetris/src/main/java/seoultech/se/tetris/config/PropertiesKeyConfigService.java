@@ -57,13 +57,20 @@ public class PropertiesKeyConfigService implements KeyConfigService {
     @Override
     public void resetBindingsToDefault() {
         keyBindings.clear();
-        keyBindings.put(GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_LEFT));
-        keyBindings.put(GameAction.MOVE_RIGHT, new KeyBinding(KeyEvent.VK_RIGHT));
-        keyBindings.put(GameAction.SOFT_DROP, new KeyBinding(KeyEvent.VK_DOWN));
-        keyBindings.put(GameAction.HARD_DROP, new KeyBinding(KeyEvent.VK_SPACE));
-        keyBindings.put(GameAction.ROTATE, new KeyBinding(KeyEvent.VK_UP, KeyEvent.VK_X));
-        keyBindings.put(GameAction.ROTATE_COUNTERCLOCKWISE, new KeyBinding(KeyEvent.VK_Z));
-        keyBindings.put(GameAction.PAUSE_MENU, new KeyBinding(KeyEvent.VK_ESCAPE));
+        keyBindings.putAll(defaultBindings());
+    }
+
+    /** 설정 화면의 저장 전 기본값 복원에도 사용할 수 있는 기본 키 목록. */
+    public static Map<GameAction, KeyBinding> defaultBindings() {
+        Map<GameAction, KeyBinding> defaults = new EnumMap<>(GameAction.class);
+        defaults.put(GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_LEFT));
+        defaults.put(GameAction.MOVE_RIGHT, new KeyBinding(KeyEvent.VK_RIGHT));
+        defaults.put(GameAction.SOFT_DROP, new KeyBinding(KeyEvent.VK_DOWN));
+        defaults.put(GameAction.HARD_DROP, new KeyBinding(KeyEvent.VK_SPACE));
+        defaults.put(GameAction.ROTATE, new KeyBinding(KeyEvent.VK_UP, KeyEvent.VK_X));
+        defaults.put(GameAction.ROTATE_COUNTERCLOCKWISE, new KeyBinding(KeyEvent.VK_Z));
+        defaults.put(GameAction.PAUSE_MENU, new KeyBinding(KeyEvent.VK_ESCAPE));
+        return Map.copyOf(defaults);
     }
 
     /** 모든 액션의 설정과 키 중복을 검사하고, 파일 저장이 성공한 뒤 실행 중 설정을 교체한다. */
@@ -75,12 +82,19 @@ public class PropertiesKeyConfigService implements KeyConfigService {
         }
         Map<GameAction, KeyBinding> replacement = new EnumMap<>(GameAction.class);
         Set<Integer> used = new HashSet<>();
+        used.add(KeyEvent.VK_ESCAPE);
         for (GameAction action : GameAction.values()) {
             KeyBinding binding = bindings.get(action);
             if (binding == null) {
                 throw new IllegalArgumentException("누락된 키 설정: " + action);
             }
-            validateKeys(binding.keyCodes(), used);
+            if (action == GameAction.PAUSE_MENU) {
+                if (!binding.equals(new KeyBinding(KeyEvent.VK_ESCAPE))) {
+                    throw new IllegalArgumentException("일시정지 키는 Esc로 고정되어 있습니다");
+                }
+            } else {
+                validateKeys(binding.keyCodes(), used);
+            }
             replacement.put(action, binding);
         }
         writeBindings(replacement);
@@ -134,7 +148,16 @@ public class PropertiesKeyConfigService implements KeyConfigService {
             // 모든 액션의 값을 검증한 뒤 적용해 일부 설정만 복원되는 일을 막는다.
             Map<GameAction, KeyBinding> loaded = new EnumMap<>(GameAction.class);
             Set<Integer> used = new HashSet<>();
+            used.add(KeyEvent.VK_ESCAPE);
             for (GameAction action : GameAction.values()) {
+                if (action == GameAction.PAUSE_MENU) {
+                    if (properties.getProperty(action.name()) == null) {
+                        throw new IllegalArgumentException("누락된 키 설정: " + action);
+                    }
+                    // 이전 파일의 일시정지 사용자 지정 값은 무시하고 고정 키를 적용한다.
+                    loaded.put(action, new KeyBinding(KeyEvent.VK_ESCAPE));
+                    continue;
+                }
                 String value = properties.getProperty(action.name());
                 if (value == null) {
                     throw new IllegalArgumentException("누락된 키 설정: " + action);

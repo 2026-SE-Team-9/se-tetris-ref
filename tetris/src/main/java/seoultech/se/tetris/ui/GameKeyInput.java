@@ -37,10 +37,16 @@ public final class GameKeyInput extends KeyAdapter {
     public void applyKeyBindings() {
         Map<Integer, GameAction> updated = new HashMap<>();
         for (GameAction action : GameAction.values()) {
+            if (action == GameAction.PAUSE_MENU) {
+                continue;
+            }
             for (int keyCode : keyConfig.getKeyCodes(action)) {
-                updated.put(keyCode, action);
+                if (keyCode != KeyEvent.VK_ESCAPE) {
+                    updated.put(keyCode, action);
+                }
             }
         }
+        updated.put(KeyEvent.VK_ESCAPE, GameAction.PAUSE_MENU);
         actionsByKey = Map.copyOf(updated);
     }
 
