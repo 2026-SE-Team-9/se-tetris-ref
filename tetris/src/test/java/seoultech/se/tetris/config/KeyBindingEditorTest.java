@@ -18,6 +18,35 @@ class KeyBindingEditorTest {
     @TempDir
     Path tempDir;
 
+    /** 모든 설정 기본값은 저장 전 임시 키에만 적용되고 Esc 기본 키도 복원한다. */
+    @Test
+    void restoresDefaultDraftWithoutSaving() {
+        var config = new PropertiesKeyConfigService(tempDir.resolve("keys.properties"));
+        var editor = new KeyBindingEditor(config, () -> {});
+        editor.captureMainKey(GameAction.MOVE_LEFT, KeyEvent.VK_A);
+        editor.restoreDefaults();
+        assertEquals(KeyEvent.VK_LEFT,
+                editor.getDraftBinding(GameAction.MOVE_LEFT).mainKeyCode().getAsInt());
+        assertEquals(KeyEvent.VK_ESCAPE,
+                editor.getDraftBinding(GameAction.PAUSE_MENU).mainKeyCode().getAsInt());
+        assertEquals(KeyEvent.VK_LEFT, config.getKeyBinding(GameAction.MOVE_LEFT).mainKeyCode());
+    }
+
+    /** 일시정지 키를 바꾸려는 요청은 거부하고 다른 임시 키는 유지한다. */
+    @Test
+    void pauseKeyIsFixedWithoutResettingOtherDraftBindings() {
+        var config = new PropertiesKeyConfigService(tempDir.resolve("keys.properties"));
+        var editor = new KeyBindingEditor(config, () -> {});
+        editor.captureMainKey(GameAction.MOVE_LEFT, KeyEvent.VK_A);
+        assertThrows(IllegalArgumentException.class,
+                () -> editor.captureMainKey(GameAction.PAUSE_MENU, KeyEvent.VK_P));
+        assertEquals(OptionalInt.of(KeyEvent.VK_ESCAPE),
+                editor.getDraftBinding(GameAction.PAUSE_MENU).mainKeyCode());
+        assertEquals(OptionalInt.of(KeyEvent.VK_A),
+                editor.getDraftBinding(GameAction.MOVE_LEFT).mainKeyCode());
+        assertTrue(editor.canSave());
+    }
+
     /** Esc로 임시 메인 키를 비우면 저장을 막고 실제 설정은 유지한다. */
     @Test
     void escapeClearsMainAndBlocksSaveWithoutChangingStoredBinding() {

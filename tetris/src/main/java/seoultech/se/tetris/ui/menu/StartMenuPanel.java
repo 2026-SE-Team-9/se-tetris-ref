@@ -12,6 +12,7 @@ import java.awt.event.KeyEvent;
 import java.util.List;
 
 import javax.swing.JPanel;
+import seoultech.se.tetris.config.AppSettings.ScreenSize;
 
 /** 게임 이름(아스키 아트)과 메뉴 리스트를 그리는 시작 메뉴 화면. */
 public class StartMenuPanel extends JPanel {
@@ -26,13 +27,15 @@ public class StartMenuPanel extends JPanel {
             "  |_| |_____| |_| |_| \\_\\___|____/ "
     };
     private static final String KEY_HINT = "사용 가능한 키:  ↑ ↓ 이동   Enter 선택";
+    private static final int BASE_SIZE = 480;
 
     private final transient StartMenuModel model;
+    private double scale = 1.0;
 
     public StartMenuPanel(StartMenuModel model) {
         this.model = model;
         setBackground(Color.BLACK);
-        setPreferredSize(new Dimension(480, 480));
+        setPreferredSize(new Dimension(BASE_SIZE, BASE_SIZE));
         setFocusable(true);
         addKeyListener(new KeyAdapter() {
             @Override
@@ -40,6 +43,15 @@ public class StartMenuPanel extends JPanel {
                 handleKey(e.getKeyCode());
             }
         });
+    }
+
+    /** 설정된 크기에 맞춰 시작 메뉴의 창과 글자·간격을 함께 조절한다. */
+    public void setScreenSize(ScreenSize size) {
+        scale = (double) size.cellPixels() / ScreenSize.MEDIUM.cellPixels();
+        int pixels = (int) Math.round(BASE_SIZE * scale);
+        setPreferredSize(new Dimension(pixels, pixels));
+        revalidate();
+        repaint();
     }
 
     private void handleKey(int keyCode) {
@@ -57,6 +69,7 @@ public class StartMenuPanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2.scale(scale, scale);
 
         int y = 70;
         g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
@@ -80,13 +93,13 @@ public class StartMenuPanel extends JPanel {
         if (model.isKeyHintVisible()) {
             g2.setFont(new Font(Font.DIALOG, Font.PLAIN, 14));
             g2.setColor(Color.WHITE);
-            drawCentered(g2, KEY_HINT, getHeight() - 30);
+            drawCentered(g2, KEY_HINT, BASE_SIZE - 30);
         }
         g2.dispose();
     }
 
     private void drawCentered(Graphics2D g2, String text, int y) {
         FontMetrics fm = g2.getFontMetrics();
-        g2.drawString(text, (getWidth() - fm.stringWidth(text)) / 2, y);
+        g2.drawString(text, (BASE_SIZE - fm.stringWidth(text)) / 2, y);
     }
 }
