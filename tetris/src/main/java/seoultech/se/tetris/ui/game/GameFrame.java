@@ -2,6 +2,8 @@ package seoultech.se.tetris.ui.game;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.function.IntConsumer;
+
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -29,11 +31,23 @@ public class GameFrame extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(GameFrame::launch);
+        SwingUtilities.invokeLater(() -> launch());
     }
 
-    /** 게임 화면을 연다. Swing 이벤트 스레드에서 호출한다. */
-    public static void launch() {
+    /**
+     * 게임 화면을 연다. 게임 오버 시에는 보드 위 문구만 남긴다.
+     * Swing 이벤트 스레드에서 호출한다.
+     */
+    public static GameFrame launch() {
+        return launch(null);
+    }
+
+    /**
+     * 게임 화면을 연다. 게임을 더 진행할 수 없으면 {@code onGameOver}에 최종 점수를 넘긴다.
+     * 콜백이 없으면 보드 위에 종료 문구만 남긴다.
+     * Swing 이벤트 스레드에서 호출한다.
+     */
+    public static GameFrame launch(IntConsumer onGameOver) {
         TetrisEngine engine = new TetrisEngine();
         GamePanel panel = new GamePanel(engine);
         GameFrame frame = new GameFrame(panel);
@@ -44,7 +58,14 @@ public class GameFrame extends JFrame {
             @Override public void onBoardUpdated() { panel.repaint(); }
             @Override public void onLinesCleared(int clearedCount, int gainedScore) { }
             @Override public void onSpeedIncreased(int currentInterval) { }
-            @Override public void onGameOver(int finalScore) { panel.repaint(); }
+            @Override public void onGameOver(int finalScore) {
+                // 낙하 타이머는 GameProgressTimer가 멈추고, 창 전환은 이 이벤트가 끝난 뒤에 한다.
+                if (onGameOver != null) {
+                    SwingUtilities.invokeLater(() -> onGameOver.accept(finalScore));
+                    return;
+                }
+                panel.repaint();
+            }
         });
 
         PropertiesKeyConfigService keyConfig = new PropertiesKeyConfigService();
@@ -76,5 +97,6 @@ public class GameFrame extends JFrame {
         frame.setVisible(true);
         panel.requestFocusInWindow();
         timer.start();
+        return frame;
     }
 }

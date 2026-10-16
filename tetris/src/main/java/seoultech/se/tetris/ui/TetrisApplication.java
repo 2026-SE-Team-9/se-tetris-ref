@@ -1,7 +1,9 @@
 package seoultech.se.tetris.ui;
 
+import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import seoultech.se.tetris.ui.end.EndScreenFrame;
 import seoultech.se.tetris.ui.game.GameFrame;
 import seoultech.se.tetris.ui.menu.StartMenuFrame;
 import seoultech.se.tetris.ui.settings.SettingsPanel;
@@ -9,10 +11,12 @@ import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
 import seoultech.se.tetris.score.CsvScoreRepository;
 
-/** 앱 진입점. 현재 구현된 시작 메뉴와 게임 화면을 연결한다. */
+/** 앱 진입점. 시작 메뉴, 게임 화면, 종료 화면을 한 번에 하나만 연다. */
 public final class TetrisApplication implements ScreenNavigator {
 
     private StartMenuFrame menu;
+    private GameFrame game;
+    private EndScreenFrame endScreen;
 
     private TetrisApplication() {
     }
@@ -23,15 +27,19 @@ public final class TetrisApplication implements ScreenNavigator {
 
     @Override
     public void navigateToMenu() {
+        closeGame();
+        closeEndScreen();
+        closeMenu();
         menu = new StartMenuFrame(this);
         menu.showMenu();
     }
 
     @Override
     public void navigateToGame() {
-        menu.dispose();
-        menu = null;
-        GameFrame.launch();
+        closeMenu();
+        closeEndScreen();
+        closeGame();
+        game = GameFrame.launch(this::navigateToGameOver);
     }
 
     @Override
@@ -51,7 +59,32 @@ public final class TetrisApplication implements ScreenNavigator {
 
     @Override
     public void navigateToGameOver(int finalScore) {
-        System.out.println("게임 오버: " + finalScore);
+        closeGame();
+        closeEndScreen();
+        endScreen = new EndScreenFrame(this, finalScore);
+        endScreen.showScreen();
+    }
+
+    /** 열려 있는 창을 닫는다. 이미 닫혀 있으면 아무 것도 하지 않는다. */
+    private static void close(JFrame frame) {
+        if (frame != null) {
+            frame.dispose();
+        }
+    }
+
+    private void closeMenu() {
+        close(menu);
+        menu = null;
+    }
+
+    private void closeGame() {
+        close(game);
+        game = null;
+    }
+
+    private void closeEndScreen() {
+        close(endScreen);
+        endScreen = null;
     }
 
     @Override
