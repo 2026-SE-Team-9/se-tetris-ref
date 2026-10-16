@@ -10,7 +10,10 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
+import java.util.List;
+import java.util.ArrayList;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import seoultech.se.tetris.config.KeyBindingEditor;
 import seoultech.se.tetris.config.KeyConfigService.GameAction;
@@ -101,6 +104,22 @@ final class KeyBindingsPanel extends JPanel {
             endKeyCapture();
             refreshKeys();
         }
+    }
+
+    boolean isCapturingKey() {
+        return captureAction != null;
+    }
+
+    /** 화면에 표시된 순서대로 기본 키·보조 키 행을 제공한다. */
+    List<List<JComponent>> navigationRows() {
+        List<List<JComponent>> rows = new ArrayList<>();
+        for (GameAction action : GameAction.values()) {
+            JButton[] buttons = keyButtons.get(action);
+            if (buttons != null) {
+                rows.add(List.of(buttons[0], buttons[1]));
+            }
+        }
+        return rows;
     }
 
     void refreshKeys() {
