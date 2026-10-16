@@ -148,4 +148,90 @@ class LevelPolicyTest {
             assertThrows(IllegalArgumentException.class, () -> policy.isAccelerated(0));
         }
     }
+
+    // ------------------------------------------------------------------
+    // 난이도별 속도 (2차 요구사항)
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("난이도별 속도")
+    class ByDifficulty {
+
+        private final LevelPolicy easy = new LevelPolicy(Difficulty.EASY);
+        private final LevelPolicy normal = new LevelPolicy(Difficulty.NORMAL);
+        private final LevelPolicy hard = new LevelPolicy(Difficulty.HARD);
+
+        @Test
+        @DisplayName("레벨당 간격 감소폭은 쉬움 16%, 중간 20%, 어려움 24%다")
+        void decayPerLevelByDifficulty() {
+            // 레벨 2 = 시작 간격 1000ms에 비율을 한 번 곱한 값
+            assertEquals(840, easy.dropIntervalMs(2));
+            assertEquals(800, normal.dropIntervalMs(2));
+            assertEquals(760, hard.dropIntervalMs(2));
+
+            // 레벨 3 = 두 번 곱한 값 (반올림)
+            assertEquals(706, easy.dropIntervalMs(3));
+            assertEquals(640, normal.dropIntervalMs(3));
+            assertEquals(578, hard.dropIntervalMs(3));
+        }
+
+        @Test
+        @DisplayName("시작 속도는 난이도와 관계없이 1초다")
+        void initialIntervalIsSameForAllDifficulties() {
+            for (Difficulty difficulty : Difficulty.values()) {
+                assertEquals(LevelPolicy.INITIAL_INTERVAL_MS,
+                        new LevelPolicy(difficulty).dropIntervalMs(LevelPolicy.INITIAL_LEVEL),
+                        difficulty.toString());
+            }
+        }
+
+        @Test
+        @DisplayName("하한에 닿기 전까지는 같은 레벨에서 쉬움이 가장 느리고 어려움이 가장 빠르다")
+        void easyIsSlowestAndHardIsFastest() {
+            for (int level = 2; level <= 9; level++) {
+                assertTrue(easy.dropIntervalMs(level) > normal.dropIntervalMs(level),
+                        "레벨 " + level + ": 쉬움이 중간보다 빠릅니다.");
+                assertTrue(normal.dropIntervalMs(level) > hard.dropIntervalMs(level),
+                        "레벨 " + level + ": 중간이 어려움보다 빠릅니다.");
+            }
+        }
+
+        @Test
+        @DisplayName("하한에 닿는 레벨은 쉬움 15, 중간 12, 어려움 10이다")
+        void levelReachingMinimumByDifficulty() {
+            assertEquals(15, firstLevelAtMinimum(easy));
+            assertEquals(12, firstLevelAtMinimum(normal));
+            assertEquals(10, firstLevelAtMinimum(hard));
+        }
+
+        @Test
+        @DisplayName("난이도는 레벨 계산에 영향을 주지 않는다")
+        void levelIsIndependentOfDifficulty() {
+            assertEquals(normal.level(35, 120), easy.level(35, 120));
+            assertEquals(normal.level(35, 120), hard.level(35, 120));
+        }
+
+        @Test
+        @DisplayName("난이도를 지정하지 않으면 중간 난이도다")
+        void defaultsToNormal() {
+            for (int level = 1; level <= 15; level++) {
+                assertEquals(normal.dropIntervalMs(level), policy.dropIntervalMs(level));
+            }
+        }
+
+        @Test
+        @DisplayName("난이도가 null이면 예외를 던진다")
+        void throwsOnNullDifficulty() {
+            assertThrows(NullPointerException.class, () -> new LevelPolicy(null));
+        }
+
+        /** 낙하 간격이 처음으로 하한값이 되는 레벨. */
+        private int firstLevelAtMinimum(LevelPolicy target) {
+            int level = LevelPolicy.INITIAL_LEVEL;
+            while (target.dropIntervalMs(level) > LevelPolicy.MIN_INTERVAL_MS) {
+                level++;
+            }
+            return level;
+        }
+    }
 }

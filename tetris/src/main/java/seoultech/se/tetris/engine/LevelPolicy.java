@@ -1,5 +1,7 @@
 package seoultech.se.tetris.engine;
 
+import java.util.Objects;
+
 /**
  * 레벨과 낙하 속도를 결정한다.
  *
@@ -14,7 +16,20 @@ package seoultech.se.tetris.engine;
  *
  * <p>레벨은 <b>1부터</b> 시작한다. 시작 레벨은 상수로 저장한다.
  *
- * <p>상태를 갖지 않으므로 같은 입력에 항상 같은 결과를 돌려준다.
+ * <p><b>난이도</b>마다 레벨당 속도 증가량이 다르다.
+ * 레벨이 1 오를 때 낙하 간격이 줄어드는 폭을 중간 난이도(20%) 기준으로
+ * 쉬움은 20% 적게(16%), 어려움은 20% 많게(24%) 한다.
+ *
+ * <pre>
+ * 난이도   레벨당 간격 비율   레벨 2   레벨 3   하한(100ms 기준) 도달
+ * 쉬움          0.84          840ms    706ms    레벨 15
+ * 중간          0.80          800ms    640ms    레벨 12
+ * 어려움        0.76          760ms    578ms    레벨 10
+ * </pre>
+ *
+ * <p>레벨은 줄 삭제와 블럭 생성을 합친 하나의 값이므로, 난이도 비율도 레벨 전체에 적용한다.
+ *
+ * <p>생성 후에는 상태가 바뀌지 않으므로 같은 입력에 항상 같은 결과를 돌려준다.
  */
 
 public class LevelPolicy {
@@ -39,8 +54,32 @@ public class LevelPolicy {
      */
     public static final int MIN_INTERVAL_MS = 100;
 
-    /** 레벨이 1 오를 때마다 낙하 간격에 곱하는 비율. */
-    private static final double DECAY_PER_LEVEL = 0.8;
+    /** 레벨이 1 오를 때마다 낙하 간격에 곱하는 비율. 난이도로 정한다. */
+    private final double decayPerLevel;
+
+    /** 지정한 난이도가 없으면 중간 난이도로 만든다 */
+    public LevelPolicy() {
+        this(Difficulty.NORMAL);
+    }
+
+    /** 난이도에 따른 속도 증가량으로 만든다. */
+    public LevelPolicy(Difficulty difficulty) {
+        this.decayPerLevel = decayOf(Objects.requireNonNull(difficulty, "난이도는 null일 수 없습니다."));
+    }
+
+    /**
+     * 난이도에 따라 레벨당 낙하 간격에 곱하는 비율
+     *
+     * <p>중간 난이도에서 레벨당 20%씩 줄어들고(0.80),
+     * 쉬움은 그 감소폭을 20% 적게(16% → 0.84), 어려움은 20% 많게(24% → 0.76) 한다.
+     */
+    private static double decayOf(Difficulty difficulty) {
+        return switch (difficulty) {
+            case EASY -> 0.84;
+            case NORMAL -> 0.80;
+            case HARD -> 0.76;
+        };
+    }
 
     /**
      * 현재 레벨을 계산한다.
@@ -66,7 +105,7 @@ public class LevelPolicy {
     public int dropIntervalMs(int level) {
         requireValidLevel(level);
 
-        double interval = INITIAL_INTERVAL_MS * Math.pow(DECAY_PER_LEVEL, level - INITIAL_LEVEL);
+        double interval = INITIAL_INTERVAL_MS * Math.pow(decayPerLevel, level - INITIAL_LEVEL);
         return Math.max(MIN_INTERVAL_MS, (int) Math.round(interval));
     }
 
