@@ -56,7 +56,6 @@ class PropertiesKeyConfigServiceTest {
         PropertiesKeyConfigService original = new PropertiesKeyConfigService(file);
         var bindings = currentBindings(original);
         bindings.put(GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_A));
-        bindings.put(GameAction.PAUSE_MENU, new KeyBinding(KeyEvent.VK_ENTER));
         bindings.put(GameAction.ROTATE, new KeyBinding(KeyEvent.VK_UP, KeyEvent.VK_R));
         original.saveBindings(bindings);
         bindings.put(GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_B));
@@ -66,11 +65,39 @@ class PropertiesKeyConfigServiceTest {
         restored.load();
 
         assertEquals(KeyEvent.VK_A, restored.getKeyBinding(GameAction.MOVE_LEFT).mainKeyCode());
-        assertEquals(KeyEvent.VK_ENTER, restored.getKeyBinding(GameAction.PAUSE_MENU).mainKeyCode());
+        assertEquals(KeyEvent.VK_ESCAPE, restored.getKeyBinding(GameAction.PAUSE_MENU).mainKeyCode());
         assertEquals(KeyEvent.VK_RIGHT, restored.getKeyBinding(GameAction.MOVE_RIGHT).mainKeyCode());
         assertEquals(List.of(KeyEvent.VK_UP, KeyEvent.VK_R), restored.getKeyCodes(GameAction.ROTATE));
         assertEquals(new KeyBinding(KeyEvent.VK_UP, KeyEvent.VK_R), restored.getKeyBinding(GameAction.ROTATE));
         assertEquals(KeyEvent.VK_Z, restored.getKeyBinding(GameAction.ROTATE_COUNTERCLOCKWISE).mainKeyCode());
+    }
+
+    /** 저장된 예전 일시정지 키는 Esc로 정규화하고 다른 사용자 키는 유지한다. */
+    @Test
+    void loadsOldCustomPauseAsFixedEscape() throws IOException {
+        Path file = tempDir.resolve("keys.properties");
+        var service = new PropertiesKeyConfigService(file);
+        var bindings = currentBindings(service);
+        bindings.put(GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_A));
+        service.saveBindings(bindings);
+        rewriteProperty(file, "PAUSE_MENU", Integer.toString(KeyEvent.VK_P));
+
+        var restored = new PropertiesKeyConfigService(file);
+        restored.load();
+        assertEquals(KeyEvent.VK_ESCAPE, restored.getKeyBinding(GameAction.PAUSE_MENU).mainKeyCode());
+        assertEquals(KeyEvent.VK_A, restored.getKeyBinding(GameAction.MOVE_LEFT).mainKeyCode());
+    }
+
+    /** Esc를 다른 조작에 쓰거나 일시정지 키를 바꾸는 저장은 거부한다. */
+    @Test
+    void rejectsChangingFixedPauseKey() {
+        var service = new PropertiesKeyConfigService(tempDir.resolve("keys.properties"));
+        var bindings = currentBindings(service);
+        bindings.put(GameAction.PAUSE_MENU, new KeyBinding(KeyEvent.VK_P));
+        assertThrows(IllegalArgumentException.class, () -> service.saveBindings(bindings));
+        bindings.put(GameAction.PAUSE_MENU, new KeyBinding(KeyEvent.VK_ESCAPE));
+        bindings.put(GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_ESCAPE));
+        assertThrows(IllegalArgumentException.class, () -> service.saveBindings(bindings));
     }
 
     /** 기존 설정 파일을 새 설정으로 교체하고 저장용 임시 파일을 남기지 않는다. */
@@ -130,7 +157,7 @@ class PropertiesKeyConfigServiceTest {
     void invalidFileRestoresAllDefaults() throws IOException {
         Path file = tempDir.resolve("invalid.properties");
         PropertiesKeyConfigService service = new PropertiesKeyConfigService(file);
-        saveBinding(service, GameAction.PAUSE_MENU, new KeyBinding(KeyEvent.VK_ENTER, service.getKeyBinding(GameAction.PAUSE_MENU).subKeyCode()));
+        saveBinding(service, GameAction.MOVE_LEFT, new KeyBinding(KeyEvent.VK_A));
 
         Files.writeString(file, "MOVE_LEFT=65\nMOVE_RIGHT=not-a-key\n");
         service.load();

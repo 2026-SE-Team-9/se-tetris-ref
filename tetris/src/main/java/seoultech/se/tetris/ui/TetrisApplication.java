@@ -6,6 +6,10 @@ import javax.swing.SwingUtilities;
 import seoultech.se.tetris.ui.end.EndScreenFrame;
 import seoultech.se.tetris.ui.game.GameFrame;
 import seoultech.se.tetris.ui.menu.StartMenuFrame;
+import seoultech.se.tetris.ui.settings.SettingsPanel;
+import seoultech.se.tetris.config.PropertiesAppSettingsService;
+import seoultech.se.tetris.config.PropertiesKeyConfigService;
+import seoultech.se.tetris.score.CsvScoreRepository;
 
 /** 앱 진입점. 시작 메뉴, 게임 화면, 종료 화면을 한 번에 하나만 연다. */
 public final class TetrisApplication implements ScreenNavigator {
@@ -40,7 +44,12 @@ public final class TetrisApplication implements ScreenNavigator {
 
     @Override
     public void navigateToSettings() {
-        System.out.println("설정 선택");
+        PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
+        settings.load();
+        PropertiesKeyConfigService keys = new PropertiesKeyConfigService();
+        keys.load();
+        menu.showSettings(new SettingsPanel(settings, keys, new CsvScoreRepository(),
+                true, () -> {}, () -> menu.showMenu()));
     }
 
     @Override

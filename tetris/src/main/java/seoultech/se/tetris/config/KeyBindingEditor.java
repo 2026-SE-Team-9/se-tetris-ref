@@ -49,6 +49,9 @@ public final class KeyBindingEditor {
     /** 선택한 메인·서브 칸을 변경한다. Esc는 칸을 비우고, 다른 키는 기존 사용 칸에서 옮겨 온다. */
     private void captureKey(GameAction action, int keyCode, boolean main) {
         Objects.requireNonNull(action, "action");
+        if (action == GameAction.PAUSE_MENU) {
+            throw new IllegalArgumentException("일시정지 키는 Esc로 고정되어 있습니다");
+        }
         if (keyCode <= KeyEvent.VK_UNDEFINED) {
             throw new IllegalArgumentException("유효하지 않은 키 코드: " + keyCode);
         }
@@ -86,6 +89,14 @@ public final class KeyBindingEditor {
     /** 적용된 설정으로 새 임시 설정을 완성한 뒤 교체하여 편집한 변경 사항을 초기화한다. */
     public void resetChanges() {
         draftBindings = createDraftBindings();
+    }
+
+    /** 저장 전 편집값을 모든 기본 키로 바꾼다. */
+    public void restoreDefaults() {
+        draftBindings = new EnumMap<>(GameAction.class);
+        PropertiesKeyConfigService.defaultBindings().forEach((action, binding) ->
+                draftBindings.put(action, new EditableKeyBinding(
+                        OptionalInt.of(binding.mainKeyCode()), binding.subKeyCode())));
     }
 
     /** 현재 적용된 액션별 키 설정을 복사하여 새 임시 설정 맵을 만든다. */
