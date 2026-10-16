@@ -9,6 +9,7 @@ import seoultech.se.tetris.ui.menu.StartMenuFrame;
 import seoultech.se.tetris.ui.settings.SettingsPanel;
 import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
+import seoultech.se.tetris.engine.GameMode;
 import seoultech.se.tetris.score.CsvScoreRepository;
 
 /** 앱 진입점. 시작 메뉴, 게임 화면, 종료 화면을 한 번에 하나만 연다. */
@@ -61,7 +62,11 @@ public final class TetrisApplication implements ScreenNavigator {
     public void navigateToGameOver(int finalScore) {
         closeGame();
         closeEndScreen();
-        endScreen = new EndScreenFrame(this, finalScore);
+        PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
+        settings.load();
+        // 모드 선택 기능이 생기기 전까지는 일반 모드로 기록한다. 저장소는 판마다 새로 만들어 파일에서 다시 읽는다.
+        endScreen = new EndScreenFrame(this, finalScore, GameMode.NORMAL,
+                settings.current().difficulty(), new CsvScoreRepository());
         endScreen.showScreen();
     }
 

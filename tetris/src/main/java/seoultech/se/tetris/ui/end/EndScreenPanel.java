@@ -13,37 +13,61 @@ import java.util.List;
 
 import javax.swing.JPanel;
 
+import seoultech.se.tetris.score.ScoreRecord;
 import seoultech.se.tetris.ui.menu.MenuItem;
 
-/** 최종 점수와 종료 후 선택지를 그리는 게임 종료 화면. */
+/** 최종 점수, 이름 입력, 스코어보드와 종료 후 선택지를 그리는 게임 종료 화면. */
 public class EndScreenPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
     private static final String TITLE = "게임 종료";
+    private static final String EMPTY_MESSAGE = "등록된 기록이 없습니다";
+    private static final String STORAGE_ERROR = "기록을 불러오거나 저장하지 못했습니다";
+    private static final String NAME_PROMPT = "순위에 올랐습니다! 이름을 입력하세요";
+    private static final String NAME_HINT = "Enter 등록   Backspace 지우기";
     private static final String KEY_HINT = "사용 가능한 키:  ↑ ↓ 이동   Enter 선택";
+
+    private static final int NAME_X = 150;
+    private static final int SCORE_X = 400;
+    private static final int RANK_X = 60;
+    private static final int ROW_HEIGHT = 24;
 
     private final transient EndScreenModel model;
 
     public EndScreenPanel(EndScreenModel model) {
         this.model = model;
         setBackground(Color.BLACK);
-        setPreferredSize(new Dimension(480, 480));
+        setPreferredSize(new Dimension(480, 560));
         setFocusable(true);
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
                 handleKey(event.getKeyCode());
             }
+
+            @Override
+            public void keyTyped(KeyEvent event) {
+                model.typeCharacter(event.getKeyChar());
+                repaint();
+            }
         });
     }
 
     private void handleKey(int keyCode) {
-        switch (keyCode) {
-            case KeyEvent.VK_UP -> model.moveUp();
-            case KeyEvent.VK_DOWN -> model.moveDown();
-            case KeyEvent.VK_ENTER -> model.select();
-            default -> model.rejectInput();
+        if (model.getPhase() == EndScreenModel.Phase.NAME_ENTRY) {
+            switch (keyCode) {
+                case KeyEvent.VK_ENTER -> model.confirmName();
+                case KeyEvent.VK_BACK_SPACE -> model.deleteCharacter();
+                default -> { }
+            }
+        } else {
+            switch (keyCode) {
+                case KeyEvent.VK_UP -> model.moveUp();
+                case KeyEvent.VK_DOWN -> model.moveDown();
+                case KeyEvent.VK_ENTER -> model.select();
+                default -> model.rejectInput();
+            }
         }
         repaint();
     }
@@ -56,13 +80,63 @@ public class EndScreenPanel extends JPanel {
 
         g2.setFont(new Font(Font.DIALOG, Font.BOLD, 36));
         g2.setColor(Color.WHITE);
-        drawCentered(g2, TITLE, 140);
+        drawCentered(g2, TITLE, 60);
 
         g2.setFont(new Font(Font.DIALOG, Font.BOLD, 22));
         g2.setColor(Color.CYAN);
-        drawCentered(g2, "점수  " + model.getFinalScore(), 200);
+        drawCentered(g2, "점수  " + model.getFinalScore(), 100);
 
-        int y = 280;
+        if (model.getPhase() == EndScreenModel.Phase.NAME_ENTRY) {
+            paintNameEntry(g2);
+        } else {
+            paintScoreboard(g2);
+            paintMenu(g2);
+        }
+        g2.dispose();
+    }
+
+    private void paintNameEntry(Graphics2D g2) {
+        g2.setFont(new Font(Font.DIALOG, Font.BOLD, 20));
+        g2.setColor(Color.WHITE);
+        drawCentered(g2, NAME_PROMPT, 240);
+
+        g2.setFont(new Font(Font.DIALOG, Font.BOLD, 28));
+        g2.setColor(Color.YELLOW);
+        drawCentered(g2, model.getName() + "_", 300);
+
+        g2.setFont(new Font(Font.DIALOG, Font.PLAIN, 14));
+        g2.setColor(Color.WHITE);
+        drawCentered(g2, NAME_HINT, getHeight() - 30);
+    }
+
+    private void paintScoreboard(Graphics2D g2) {
+        int y = 150;
+        g2.setFont(new Font(Font.DIALOG, Font.BOLD, 16));
+        g2.setColor(Color.GRAY);
+        g2.drawString("순위", RANK_X, y);
+        g2.drawString("이름", NAME_X, y);
+        drawRight(g2, "점수", SCORE_X, y);
+
+        List<ScoreRecord> records = model.getRecords();
+        if (records.isEmpty()) {
+            g2.setColor(model.isStorageFailed() ? Color.RED : Color.GRAY);
+            drawCentered(g2, model.isStorageFailed() ? STORAGE_ERROR : EMPTY_MESSAGE, y + 2 * ROW_HEIGHT);
+            return;
+        }
+        for (int i = 0; i < records.size(); i++) {
+            ScoreRecord record = records.get(i);
+            y += ROW_HEIGHT;
+            // 강조는 등록 때 반환된 순위로만 정한다. 이름과 점수가 같은 다른 기록은 강조하지 않는다.
+            boolean highlighted = i + 1 == model.getHighlightedRank();
+            g2.setColor(highlighted ? Color.YELLOW : Color.WHITE);
+            g2.drawString(String.valueOf(i + 1), RANK_X, y);
+            g2.drawString(record.playerName(), NAME_X, y);
+            drawRight(g2, String.valueOf(record.score()), SCORE_X, y);
+        }
+    }
+
+    private void paintMenu(Graphics2D g2) {
+        int y = 440;
         g2.setFont(new Font(Font.DIALOG, Font.BOLD, 22));
         List<MenuItem> items = model.getItems();
         for (int i = 0; i < items.size(); i++) {
@@ -77,11 +151,14 @@ public class EndScreenPanel extends JPanel {
             g2.setColor(Color.WHITE);
             drawCentered(g2, KEY_HINT, getHeight() - 30);
         }
-        g2.dispose();
     }
 
     private void drawCentered(Graphics2D g2, String text, int y) {
         FontMetrics metrics = g2.getFontMetrics();
         g2.drawString(text, (getWidth() - metrics.stringWidth(text)) / 2, y);
+    }
+
+    private void drawRight(Graphics2D g2, String text, int rightX, int y) {
+        g2.drawString(text, rightX - g2.getFontMetrics().stringWidth(text), y);
     }
 }
