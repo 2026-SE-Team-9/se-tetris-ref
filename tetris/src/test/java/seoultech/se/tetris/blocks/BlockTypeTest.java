@@ -97,6 +97,24 @@ class BlockTypeTest {
                 assertNotEquals('.', type.symbol());
             }
         }
+
+        @Test
+        @DisplayName("O형은 O, L형은 V로 표시한다 (2차 요구사항 정리)")
+        void usesSymbolsDecidedForSecondRequirements() {
+            assertEquals('O', BlockType.O.symbol());
+            assertEquals('V', BlockType.L.symbol());
+        }
+
+        @Test
+        @DisplayName("아이템과 고스트 블럭의 문자와 겹치지 않는다")
+        void doesNotUseReservedSymbols() {
+            // 아이템: L(줄 삭제), A(무게추), D(Double or Nothing), B(Tall Boy), C(Crusher) / 고스트: #
+            String reserved = "LADBC#";
+            for (BlockType type : BlockType.values()) {
+                assertTrue(reserved.indexOf(type.symbol()) < 0,
+                        type + "의 표시 문자가 예약된 문자와 겹칩니다: " + type.symbol());
+            }
+        }
     }
 
     // ------------------------------------------------------------------
