@@ -93,7 +93,7 @@ public class GameFrame extends JFrame {
             PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
             settings.load();
             SettingsPanel settingsPanel = new SettingsPanel(settings, keyConfig, new CsvScoreRepository(),
-                    false, input::applyKeyBindings, () -> {
+                    SettingsPanel.Context.IN_GAME, input::applyKeyBindings, () -> {
                         frame.setContentPane(panel);
                         frame.pack();
                         frame.setLocationRelativeTo(null);

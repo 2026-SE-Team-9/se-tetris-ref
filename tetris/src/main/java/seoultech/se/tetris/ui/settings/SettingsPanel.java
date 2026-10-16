@@ -45,6 +45,33 @@ import seoultech.se.tetris.score.ScoreRepository;
 
 /** 시작 메뉴와 일시정지 화면에서 재사용할 수 있는 설정 화면. */
 public final class SettingsPanel extends JPanel {
+    /**
+     * 설정 화면을 연 위치.
+     *
+     * <p>난이도와 스코어보드 기록 초기화는 시작 메뉴에서만 바꿀 수 있다.
+     * 게임 중에는 진행 중인 판의 규칙과 기록이 어긋나지 않도록 두 항목을 보여주지 않는다.
+     */
+    public enum Context {
+        /** 시작 메뉴에서 연 설정 */
+        START_MENU(true),
+        /** 게임 중 일시정지 메뉴에서 연 설정 */
+        IN_GAME(false);
+
+        private final boolean fullAccess;
+
+        Context(boolean fullAccess) {
+            this.fullAccess = fullAccess;
+        }
+
+        boolean allowsDifficulty() {
+            return fullAccess;
+        }
+
+        boolean allowsScoreReset() {
+            return fullAccess;
+        }
+    }
+
     private static final long serialVersionUID = 1L;
     private static final Color BACKGROUND = Color.BLACK;
     private static final Color SURFACE = new Color(25, 25, 25);
@@ -56,7 +83,7 @@ public final class SettingsPanel extends JPanel {
     private final KeyBindingEditor keyEditor;
     private final KeyBindingsPanel keyBindings;
     private final ScoreRepository scores;
-    private final boolean allowScoreReset;
+    private final Context context;
     private final Runnable onClose;
     private final transient KeyEventDispatcher keyboardDispatcher = this::dispatchKeyboard;
     private final List<List<JComponent>> navigationRows = new ArrayList<>();
@@ -66,14 +93,14 @@ public final class SettingsPanel extends JPanel {
 
     public SettingsPanel(PropertiesAppSettingsService settings,
             PropertiesKeyConfigService keys, ScoreRepository scores,
-            boolean allowScoreReset, Runnable onKeysSaved, Runnable onClose) {
+            Context context, Runnable onKeysSaved, Runnable onClose) {
         super(new BorderLayout());
         this.settings = Objects.requireNonNull(settings, "settings");
         this.keyEditor = new KeyBindingEditor(Objects.requireNonNull(keys, "keys"),
                 Objects.requireNonNull(onKeysSaved, "onKeysSaved"));
         this.keyBindings = new KeyBindingsPanel(keyEditor);
         this.scores = Objects.requireNonNull(scores, "scores");
-        this.allowScoreReset = allowScoreReset;
+        this.context = Objects.requireNonNull(context, "context");
         this.onClose = Objects.requireNonNull(onClose, "onClose");
         buildContent();
         loadCurrentValues();
@@ -219,32 +246,34 @@ public final class SettingsPanel extends JPanel {
         content.add(title);
         content.add(Box.createVerticalStrut(18));
 
-        JPanel options = new JPanel(new GridLayout(3, 2, 12, 12));
+        JPanel options = new JPanel(new GridLayout(context.allowsDifficulty() ? 3 : 2, 2, 12, 12));
         options.setBackground(BACKGROUND);
         options.add(label("화면 크기"));
         styleCombo(screenSize);
         options.add(screenSize);
-        options.add(label("난이도"));
-        styleCombo(difficulty);
-        difficulty.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(javax.swing.JList<?> list,
-                    Object value, int index, boolean selected, boolean focused) {
-                super.getListCellRendererComponent(list, value, index, selected, focused);
-                if (value instanceof Difficulty selectedDifficulty) {
-                    setText(switch (selectedDifficulty) {
-                        case EASY -> "쉬움";
-                        case NORMAL -> "중간";
-                        case HARD -> "어려움";
-                    });
+        if (context.allowsDifficulty()) {
+            options.add(label("난이도"));
+            styleCombo(difficulty);
+            difficulty.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(javax.swing.JList<?> list,
+                        Object value, int index, boolean selected, boolean focused) {
+                    super.getListCellRendererComponent(list, value, index, selected, focused);
+                    if (value instanceof Difficulty selectedDifficulty) {
+                        setText(switch (selectedDifficulty) {
+                            case EASY -> "쉬움";
+                            case NORMAL -> "중간";
+                            case HARD -> "어려움";
+                        });
+                    }
+                    setOpaque(true);
+                    setBackground(index >= 0 && selected ? Color.CYAN : SURFACE);
+                    setForeground(index >= 0 && selected ? BACKGROUND : Color.WHITE);
+                    return this;
                 }
-                setOpaque(true);
-                setBackground(index >= 0 && selected ? Color.CYAN : SURFACE);
-                setForeground(index >= 0 && selected ? BACKGROUND : Color.WHITE);
-                return this;
-            }
-        });
-        options.add(difficulty);
+            });
+            options.add(difficulty);
+        }
         options.add(label("블록 표시"));
         colorBlind.setFont(BODY_FONT);
         colorBlind.setBackground(BACKGROUND);
@@ -253,10 +282,14 @@ public final class SettingsPanel extends JPanel {
         options.add(colorBlind);
         content.add(options);
         navigationRows.add(List.of(screenSize));
-        navigationRows.add(List.of(difficulty));
+        if (context.allowsDifficulty()) {
+            navigationRows.add(List.of(difficulty));
+        }
         navigationRows.add(List.of(colorBlind));
         content.add(Box.createVerticalStrut(8));
-        JLabel sizeHint = label("화면 크기·난이도·색맹 모드는 저장되지만 현재 화면과 게임에는 적용되지 않습니다.");
+        JLabel sizeHint = label(context.allowsDifficulty()
+                ? "화면 크기·난이도·색맹 모드는 저장되지만 현재 화면과 게임에는 적용되지 않습니다."
+                : "화면 크기·색맹 모드는 저장되지만 현재 화면과 게임에는 적용되지 않습니다.");
         sizeHint.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
         sizeHint.setForeground(MUTED);
         content.add(sizeHint);
@@ -284,7 +317,7 @@ public final class SettingsPanel extends JPanel {
         styleButton(reset, false);
         reset.addActionListener(event -> restoreDefaults());
         actions.add(reset);
-        if (allowScoreReset) {
+        if (context.allowsScoreReset()) {
             JButton clearScores = new JButton("스코어보드 기록 초기화");
             styleButton(clearScores, false);
             clearScores.addActionListener(event -> clearScores());
@@ -407,7 +440,9 @@ public final class SettingsPanel extends JPanel {
     private void restoreDefaults() {
         keyBindings.cancelKeyCapture();
         screenSize.setSelectedItem(AppSettings.DEFAULT.screenSize());
-        difficulty.setSelectedItem(AppSettings.DEFAULT.difficulty());
+        if (context.allowsDifficulty()) {
+            difficulty.setSelectedItem(AppSettings.DEFAULT.difficulty());
+        }
         colorBlind.setSelected(AppSettings.DEFAULT.colorBlind());
         keyEditor.restoreDefaults();
         keyBindings.refreshKeys();
@@ -422,8 +457,12 @@ public final class SettingsPanel extends JPanel {
         }
         try {
             keyEditor.save();
+            // 게임 중에는 난이도를 보여주지 않으므로 저장된 값을 그대로 유지한다.
+            Difficulty savedDifficulty = context.allowsDifficulty()
+                    ? (Difficulty) difficulty.getSelectedItem()
+                    : settings.current().difficulty();
             settings.save(new AppSettings((ScreenSize) screenSize.getSelectedItem(),
-                    colorBlind.isSelected(), (Difficulty) difficulty.getSelectedItem()));
+                    colorBlind.isSelected(), savedDifficulty));
             close();
         } catch (RuntimeException e) {
             JOptionPane.showMessageDialog(this,
@@ -434,7 +473,7 @@ public final class SettingsPanel extends JPanel {
 
     private void clearScores() {
         keyBindings.cancelKeyCapture();
-        if (!allowScoreReset) {
+        if (!context.allowsScoreReset()) {
             return;
         }
         int choice = JOptionPane.showConfirmDialog(this, "모든 모드의 점수 기록을 삭제하시겠습니까?",

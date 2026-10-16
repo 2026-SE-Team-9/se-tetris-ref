@@ -50,7 +50,7 @@ public final class TetrisApplication implements ScreenNavigator {
         PropertiesKeyConfigService keys = new PropertiesKeyConfigService();
         keys.load();
         menu.showSettings(new SettingsPanel(settings, keys, new CsvScoreRepository(),
-                true, () -> {}, () -> menu.showMenu()));
+                SettingsPanel.Context.START_MENU, () -> {}, () -> menu.showMenu()));
     }
 
     @Override
