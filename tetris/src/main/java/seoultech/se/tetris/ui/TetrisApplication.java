@@ -39,7 +39,7 @@ public final class TetrisApplication implements ScreenNavigator {
         closeMenu();
         closeEndScreen();
         closeGame();
-        game = GameFrame.launch(this::navigateToGameOver);
+        game = GameFrame.launch(this::navigateToGameOver, this::navigateToMenu);
     }
 
     @Override
