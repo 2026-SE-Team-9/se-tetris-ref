@@ -9,13 +9,16 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import seoultech.se.tetris.component.listener.GameEventListener;
+import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
 import seoultech.se.tetris.engine.TetrisEngine;
+import seoultech.se.tetris.score.CsvScoreRepository;
 import seoultech.se.tetris.ui.GameKeyInput;
+import seoultech.se.tetris.ui.TetrisApplication;
+import seoultech.se.tetris.ui.settings.SettingsPanel;
 
 /**
  * 게임 화면을 담는 창. 앱 진입 또는 단독 실행 시 엔진·자동 낙하·키 입력을 연결한다.
- * 일시정지 메뉴는 조작/설정 담당 구현으로 교체한다.
  */
 public class GameFrame extends JFrame {
 
@@ -39,7 +42,7 @@ public class GameFrame extends JFrame {
      * Swing 이벤트 스레드에서 호출한다.
      */
     public static GameFrame launch() {
-        return launch(null);
+        return launch(null, () -> TetrisApplication.main(new String[0]));
     }
 
     /**
@@ -48,6 +51,11 @@ public class GameFrame extends JFrame {
      * Swing 이벤트 스레드에서 호출한다.
      */
     public static GameFrame launch(IntConsumer onGameOver) {
+        return launch(onGameOver, () -> TetrisApplication.main(new String[0]));
+    }
+
+    /** 앱의 타이틀 화면 복귀 동작을 연결하여 게임 화면을 연다. */
+    public static GameFrame launch(IntConsumer onGameOver, Runnable onReturnToTitle) {
         TetrisEngine engine = new TetrisEngine();
         GamePanel panel = new GamePanel(engine);
         GameFrame frame = new GameFrame(panel);
@@ -71,24 +79,51 @@ public class GameFrame extends JFrame {
         PropertiesKeyConfigService keyConfig = new PropertiesKeyConfigService();
         keyConfig.load();
         GameKeyInput input = new GameKeyInput(keyConfig, engine, engine,
-                () -> SwingUtilities.invokeLater(() -> {
+                () -> {
                     panel.repaint();
-                    int choice = JOptionPane.showConfirmDialog(frame, "계속하시겠습니까?", "일시정지",
-                            JOptionPane.YES_NO_OPTION);
-                    if (choice == JOptionPane.YES_OPTION) {
-                        engine.resumeGame();
-                        panel.repaint();
-                        panel.requestFocusInWindow();
-                    } else {
-                        engine.exitGame();
-                        frame.dispose();
-                    }
-                }));
+                    frame.getGlassPane().setVisible(true);
+                    frame.getGlassPane().requestFocusInWindow();
+                });
+        Runnable resume = () -> {
+            frame.getGlassPane().setVisible(false);
+            engine.resumeGame();
+            panel.requestFocusInWindow();
+        };
+        Runnable showSettings = () -> {
+            PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
+            settings.load();
+            SettingsPanel settingsPanel = new SettingsPanel(settings, keyConfig, new CsvScoreRepository(),
+                    false, input::applyKeyBindings, () -> {
+                        frame.setContentPane(panel);
+                        frame.pack();
+                        frame.setLocationRelativeTo(null);
+                        frame.getGlassPane().setVisible(true);
+                        frame.getGlassPane().requestFocusInWindow();
+                    });
+            frame.getGlassPane().setVisible(false);
+            frame.setContentPane(settingsPanel);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+        };
+        Runnable returnToTitle = () -> {
+            int choice = JOptionPane.showConfirmDialog(frame,
+                    "현재 게임 진행 상황이 사라집니다. 타이틀로 돌아가시겠습니까?",
+                    "타이틀로 돌아가기", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (choice == JOptionPane.YES_OPTION) {
+                engine.exitGame();
+                frame.dispose();
+                onReturnToTitle.run();
+            } else {
+                frame.getGlassPane().requestFocusInWindow();
+            }
+        };
+        frame.setGlassPane(new PauseMenuPanel(resume, showSettings, returnToTitle));
         input.attachTo(panel);
         frame.addWindowListener(new WindowAdapter() {
             private void releaseGame() {
                 timer.stop();
                 engine.removeListener(timer);
+                input.detach();
             }
 
             @Override public void windowClosing(WindowEvent event) { releaseGame(); }
