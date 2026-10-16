@@ -36,7 +36,8 @@ class SettingsPanelTest {
         SwingUtilities.invokeAndWait(() -> {
             var panel = new SettingsPanel(new PropertiesAppSettingsService(settingsFile),
                     new PropertiesKeyConfigService(tempDir.resolve("keys.properties")),
-                    new CsvScoreRepository(tempDir.resolve("scores.csv")), true, () -> {}, () -> {});
+                    new CsvScoreRepository(tempDir.resolve("scores.csv")), SettingsPanel.Context.START_MENU,
+                    () -> {}, () -> {});
             @SuppressWarnings("unchecked")
             JComboBox<ScreenSize> size = (JComboBox<ScreenSize>) find(panel, JComboBox.class, 0);
             @SuppressWarnings("unchecked")
@@ -92,7 +93,8 @@ class SettingsPanelTest {
     private SettingsPanel settingsPanel(Path file, Runnable onClose) {
         return new SettingsPanel(new PropertiesAppSettingsService(file),
                 new PropertiesKeyConfigService(tempDir.resolve(file.getFileName() + ".keys")),
-                new CsvScoreRepository(tempDir.resolve("scores.csv")), true, () -> {}, onClose);
+                new CsvScoreRepository(tempDir.resolve("scores.csv")), SettingsPanel.Context.START_MENU,
+                () -> {}, onClose);
     }
 
     /** 방향키로 설정 항목과 기본·보조 키, 하단 버튼을 이동해도 설정값은 바뀌지 않는다. */
@@ -126,6 +128,94 @@ class SettingsPanelTest {
             assertSame(findButton(panel, "취소"), panel.navigationTarget(current, KeyEvent.VK_RIGHT));
             assertEquals(originalSize, size.getSelectedItem());
         });
+    }
+
+    private SettingsPanel inGamePanel(Path file) {
+        return new SettingsPanel(new PropertiesAppSettingsService(file),
+                new PropertiesKeyConfigService(tempDir.resolve(file.getFileName() + ".keys")),
+                new CsvScoreRepository(tempDir.resolve("scores.csv")), SettingsPanel.Context.IN_GAME,
+                () -> {}, () -> {});
+    }
+
+    /** 게임 중 설정에는 난이도 선택이 없고, 시작 메뉴 설정에는 있다. */
+    @Test
+    void inGameSettingsHideDifficulty() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            SettingsPanel inGame = inGamePanel(tempDir.resolve("in-game.properties"));
+            SettingsPanel menu = settingsPanel(tempDir.resolve("menu.properties"), () -> {});
+
+            assertEquals(1, count(inGame, JComboBox.class));
+            assertEquals(2, count(menu, JComboBox.class));
+        });
+    }
+
+    /** 게임 중 설정에서는 화면 크기에서 색맹 모드로 바로 이동하고 돌아온다. */
+    @Test
+    void inGameNavigationSkipsDifficulty() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            SettingsPanel panel = inGamePanel(tempDir.resolve("in-game-nav.properties"));
+            Component size = find(panel, JComboBox.class, 0);
+            Component colorBlind = find(panel, JCheckBox.class, 0);
+
+            assertSame(colorBlind, panel.navigationTarget(size, KeyEvent.VK_DOWN));
+            assertSame(size, panel.navigationTarget(colorBlind, KeyEvent.VK_UP));
+        });
+    }
+
+    /** 게임 중 설정을 저장해도 시작 메뉴에서 정한 난이도는 그대로이고, 다른 설정은 저장된다. */
+    @Test
+    void inGameSaveKeepsStoredDifficulty() throws Exception {
+        Path file = tempDir.resolve("keep-difficulty.properties");
+        PropertiesAppSettingsService initial = new PropertiesAppSettingsService(file);
+        initial.save(new seoultech.se.tetris.config.AppSettings(ScreenSize.SMALL, false, Difficulty.HARD));
+
+        SwingUtilities.invokeAndWait(() -> {
+            PropertiesAppSettingsService service = new PropertiesAppSettingsService(file);
+            service.load();
+            SettingsPanel panel = new SettingsPanel(service,
+                    new PropertiesKeyConfigService(tempDir.resolve("keep-difficulty.keys")),
+                    new CsvScoreRepository(tempDir.resolve("scores.csv")), SettingsPanel.Context.IN_GAME,
+                    () -> {}, () -> {});
+            @SuppressWarnings("unchecked")
+            JComboBox<ScreenSize> size = (JComboBox<ScreenSize>) find(panel, JComboBox.class, 0);
+            size.setSelectedItem(ScreenSize.LARGE);
+            ((JButton) findButton(panel, "저장")).doClick();
+        });
+
+        PropertiesAppSettingsService restored = new PropertiesAppSettingsService(file);
+        restored.load();
+        assertEquals(ScreenSize.LARGE, restored.current().screenSize());
+        assertEquals(Difficulty.HARD, restored.current().difficulty());
+    }
+
+    /** 게임 중 설정의 '모든 설정 기본값'은 난이도를 되돌리지 않는다. */
+    @Test
+    void inGameRestoreDefaultsKeepsStoredDifficulty() throws Exception {
+        Path file = tempDir.resolve("restore-difficulty.properties");
+        new PropertiesAppSettingsService(file).save(
+                new seoultech.se.tetris.config.AppSettings(ScreenSize.LARGE, true, Difficulty.HARD));
+
+        SwingUtilities.invokeAndWait(() -> {
+            PropertiesAppSettingsService service = new PropertiesAppSettingsService(file);
+            service.load();
+            SettingsPanel panel = new SettingsPanel(service,
+                    new PropertiesKeyConfigService(tempDir.resolve("restore-difficulty.keys")),
+                    new CsvScoreRepository(tempDir.resolve("scores.csv")), SettingsPanel.Context.IN_GAME,
+                    () -> {}, () -> {});
+            ((JButton) findButton(panel, "모든 설정 기본값")).doClick();
+            ((JButton) findButton(panel, "저장")).doClick();
+        });
+
+        PropertiesAppSettingsService restored = new PropertiesAppSettingsService(file);
+        restored.load();
+        assertEquals(ScreenSize.MEDIUM, restored.current().screenSize());
+        assertEquals(Difficulty.HARD, restored.current().difficulty());
+    }
+
+    private static int count(Container root, Class<?> type) {
+        java.util.List<Component> matches = new java.util.ArrayList<>();
+        collect(root, type, matches);
+        return matches.size();
     }
 
     private static void assertDark(JComboBox<?> combo) {
