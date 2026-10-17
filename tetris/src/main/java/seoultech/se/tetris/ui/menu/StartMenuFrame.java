@@ -4,6 +4,7 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import seoultech.se.tetris.ui.ScreenNavigator;
+import seoultech.se.tetris.ui.scoreboard.ScoreboardPanel;
 import seoultech.se.tetris.ui.settings.SettingsPanel;
 
 /** 시작 메뉴를 담는 창. 단독 실행(main) 시에는 선택 결과를 콘솔에 출력하는 임시 내비게이터를 사용한다. */
@@ -37,6 +38,15 @@ public class StartMenuFrame extends JFrame {
         pack();
         setLocationRelativeTo(null);
         setVisible(true);
+    }
+
+    /** 같은 창에서 스코어보드 화면으로 전환한다. */
+    public void showScoreboard(ScoreboardPanel scoreboard) {
+        setContentPane(scoreboard);
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
+        scoreboard.requestFocusInWindow();
     }
 
     public static void main(String[] args) {
