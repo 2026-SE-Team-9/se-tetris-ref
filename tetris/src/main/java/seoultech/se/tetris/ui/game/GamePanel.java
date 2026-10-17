@@ -20,20 +20,62 @@ public class GamePanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private static final int CELL = 28;
-    private static final int MARGIN = 24;
-    private static final int BOARD_W = Board.WIDTH * CELL;
-    private static final int BOARD_H = Board.VISIBLE_HEIGHT * CELL;
-    private static final int SIDE_X = MARGIN + BOARD_W + MARGIN;
-    private static final int SIDE_W = 150;
+    /** 배율 1.0일 때의 칸·여백·옆 패널 크기(px). 실제 크기는 여기에 배율을 곱한다. */
+    private static final int BASE_CELL = 28;
+    private static final int BASE_MARGIN = 24;
+    private static final int BASE_SIDE_W = 150;
+    private static final int BASE_MINI_CELL = 22;
     private static final Color GRID = new Color(40, 40, 40);
 
     private final transient GameState state;
+    private double scale;
+    private int cell;
+    private int margin;
+    private int boardW;
+    private int boardH;
+    private int sideX;
+    private int sideW;
 
     public GamePanel(GameState state) {
+        this(state, 1.0);
+    }
+
+    /** @param scale 기본 크기에 곱하는 배율. 0보다 커야 한다 */
+    public GamePanel(GameState state, double scale) {
         this.state = state;
         setBackground(Color.BLACK);
-        setPreferredSize(new Dimension(SIDE_X + SIDE_W + MARGIN, BOARD_H + MARGIN * 2));
+        setScale(scale);
+    }
+
+    /**
+     * 화면 배율을 바꾼다. 선호 크기가 바뀌므로 창에 담긴 뒤에는 창의 {@code pack()}을 다시 호출해야 한다.
+     */
+    public final void setScale(double scale) {
+        if (!(scale > 0)) {
+            throw new IllegalArgumentException("배율은 0보다 커야 합니다: " + scale);
+        }
+        this.scale = scale;
+        cell = scaled(BASE_CELL);
+        margin = scaled(BASE_MARGIN);
+        boardW = Board.WIDTH * cell;
+        boardH = Board.VISIBLE_HEIGHT * cell;
+        sideX = margin + boardW + margin;
+        sideW = scaled(BASE_SIDE_W);
+        setPreferredSize(new Dimension(sideX + sideW + margin, boardH + margin * 2));
+        revalidate();
+        repaint();
+    }
+
+    public double getScale() {
+        return scale;
+    }
+
+    private int scaled(int base) {
+        return (int) Math.round(base * scale);
+    }
+
+    private Font font(String family, int style, int baseSize) {
+        return new Font(family, style, scaled(baseSize));
     }
 
     @Override
@@ -55,10 +97,10 @@ public class GamePanel extends JPanel {
     private void drawBoard(Graphics2D g2) {
         g2.setColor(GRID);
         for (int r = 0; r <= Board.VISIBLE_HEIGHT; r++) {
-            g2.drawLine(MARGIN, MARGIN + r * CELL, MARGIN + BOARD_W, MARGIN + r * CELL);
+            g2.drawLine(margin, margin + r * cell, margin + boardW, margin + r * cell);
         }
         for (int c = 0; c <= Board.WIDTH; c++) {
-            g2.drawLine(MARGIN + c * CELL, MARGIN, MARGIN + c * CELL, MARGIN + BOARD_H);
+            g2.drawLine(margin + c * cell, margin, margin + c * cell, margin + boardH);
         }
 
         int[][] grid = state.getBoard();
@@ -66,7 +108,7 @@ public class GamePanel extends JPanel {
         for (int r = offset; r < Board.HEIGHT; r++) {
             for (int c = 0; c < Board.WIDTH; c++) {
                 if (grid[r][c] != BlockType.EMPTY_CODE) {
-                    drawCell(g2, MARGIN + c * CELL, MARGIN + (r - offset) * CELL, BlockType.fromCode(grid[r][c]));
+                    drawCell(g2, margin + c * cell, margin + (r - offset) * cell, BlockType.fromCode(grid[r][c]));
                 }
             }
         }
@@ -77,49 +119,49 @@ public class GamePanel extends JPanel {
                 for (int c = 0; c < BlockType.SIZE; c++) {
                     int row = current.boardRow(r) - offset;
                     if (current.isFilled(r, c) && row >= 0) {
-                        drawCell(g2, MARGIN + current.boardCol(c) * CELL, MARGIN + row * CELL, current.type());
+                        drawCell(g2, margin + current.boardCol(c) * cell, margin + row * cell, current.type());
                     }
                 }
             }
         }
         g2.setColor(Color.WHITE);
-        g2.drawRect(MARGIN - 1, MARGIN - 1, BOARD_W + 1, BOARD_H + 1);
+        g2.drawRect(margin - 1, margin - 1, boardW + 1, boardH + 1);
     }
 
     private void drawSidePanel(Graphics2D g2) {
         g2.setColor(Color.WHITE);
-        g2.setFont(new Font(Font.DIALOG, Font.BOLD, 16));
-        g2.drawString("NEXT", SIDE_X, MARGIN + 16);
+        g2.setFont(font(Font.DIALOG, Font.BOLD, 16));
+        g2.drawString("NEXT", sideX, margin + scaled(16));
         Block next = state.getNextBlock();
         if (next != null) {
-            int mini = 22;
+            int mini = scaled(BASE_MINI_CELL);
             for (int r = 0; r < BlockType.SIZE; r++) {
                 for (int c = 0; c < BlockType.SIZE; c++) {
                     if (next.isFilled(r, c)) {
-                        drawCell(g2, SIDE_X + c * mini, MARGIN + 30 + r * mini, next.type(), mini);
+                        drawCell(g2, sideX + c * mini, margin + scaled(30) + r * mini, next.type(), mini);
                     }
                 }
             }
         }
 
-        int y = MARGIN + 170;
+        int y = margin + scaled(170);
         y = drawStat(g2, "SCORE", String.valueOf(state.getScore()), y);
         y = drawStat(g2, "LEVEL", String.valueOf(state.getLevel()), y);
         drawStat(g2, "LINES", String.valueOf(state.getLinesCleared()), y);
     }
 
     private int drawStat(Graphics2D g2, String label, String value, int y) {
-        g2.setFont(new Font(Font.DIALOG, Font.BOLD, 14));
+        g2.setFont(font(Font.DIALOG, Font.BOLD, 14));
         g2.setColor(Color.GRAY);
-        g2.drawString(label, SIDE_X, y);
-        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 22));
+        g2.drawString(label, sideX, y);
+        g2.setFont(font(Font.MONOSPACED, Font.BOLD, 22));
         g2.setColor(Color.WHITE);
-        g2.drawString(value, SIDE_X, y + 26);
-        return y + 66;
+        g2.drawString(value, sideX, y + scaled(26));
+        return y + scaled(66);
     }
 
     private void drawCell(Graphics2D g2, int x, int y, BlockType type) {
-        drawCell(g2, x, y, type, CELL);
+        drawCell(g2, x, y, type, cell);
     }
 
     private void drawCell(Graphics2D g2, int x, int y, BlockType type, int size) {
@@ -134,10 +176,10 @@ public class GamePanel extends JPanel {
 
     private void drawOverlay(Graphics2D g2, String text) {
         g2.setColor(new Color(0, 0, 0, 170));
-        g2.fillRect(MARGIN, MARGIN, BOARD_W, BOARD_H);
+        g2.fillRect(margin, margin, boardW, boardH);
         g2.setColor(Color.WHITE);
-        g2.setFont(new Font(Font.DIALOG, Font.BOLD, 26));
+        g2.setFont(font(Font.DIALOG, Font.BOLD, 26));
         FontMetrics fm = g2.getFontMetrics();
-        g2.drawString(text, MARGIN + (BOARD_W - fm.stringWidth(text)) / 2, MARGIN + BOARD_H / 2);
+        g2.drawString(text, margin + (boardW - fm.stringWidth(text)) / 2, margin + boardH / 2);
     }
 }

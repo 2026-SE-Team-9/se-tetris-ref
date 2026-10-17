@@ -14,12 +14,19 @@ public record AppSettings(ScreenSize screenSize, boolean colorBlind, Difficulty 
 
     /** 설정 화면에서 선택할 수 있는 세 가지 화면 크기. */
     public enum ScreenSize {
-        SMALL("작게"), MEDIUM("보통"), LARGE("크게");
+        SMALL("작게", 0.8), MEDIUM("보통", 1.0), LARGE("크게", 1.3);
 
         private final String label;
+        private final double scale;
 
-        ScreenSize(String label) {
+        ScreenSize(String label, double scale) {
             this.label = label;
+            this.scale = scale;
+        }
+
+        /** 게임 화면의 기본 크기에 곱하는 배율. 보통은 기본 크기 그대로다. */
+        public double scale() {
+            return scale;
         }
 
         @Override

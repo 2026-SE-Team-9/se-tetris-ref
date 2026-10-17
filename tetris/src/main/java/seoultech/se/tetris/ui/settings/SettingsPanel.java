@@ -287,9 +287,7 @@ public final class SettingsPanel extends JPanel {
         }
         navigationRows.add(List.of(colorBlind));
         content.add(Box.createVerticalStrut(8));
-        JLabel sizeHint = label(context.allowsDifficulty()
-                ? "화면 크기·난이도·색맹 모드는 저장되지만 현재 화면과 게임에는 적용되지 않습니다."
-                : "화면 크기·색맹 모드는 저장되지만 현재 화면과 게임에는 적용되지 않습니다.");
+        JLabel sizeHint = label("화면 크기는 게임 화면에 적용됩니다. 색맹 모드는 저장되지만 아직 게임에는 적용되지 않습니다.");
         sizeHint.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
         sizeHint.setForeground(MUTED);
         content.add(sizeHint);
