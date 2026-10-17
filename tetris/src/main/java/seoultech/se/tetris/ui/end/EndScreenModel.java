@@ -11,6 +11,7 @@ import seoultech.se.tetris.score.ScoreRepository;
 import seoultech.se.tetris.ui.ScreenNavigator;
 import seoultech.se.tetris.ui.menu.MenuItem;
 import seoultech.se.tetris.ui.menu.StartMenuModel;
+import seoultech.se.tetris.ui.scoreboard.ScoreboardModel;
 
 /**
  * 게임 종료 화면의 최종 점수, 이름 입력, 스코어보드, 선택 상태.
@@ -26,7 +27,7 @@ import seoultech.se.tetris.ui.menu.StartMenuModel;
 public final class EndScreenModel {
 
     /** 화면에 보여줄 최대 기록 수. 이를 넘는 기록은 보여주지 않는다. */
-    public static final int DISPLAY_COUNT = 10;
+    public static final int DISPLAY_COUNT = ScoreboardModel.DISPLAY_COUNT;
 
     /** 입력할 수 있는 이름의 최대 길이 */
     public static final int MAX_NAME_LENGTH = 12;
