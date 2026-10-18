@@ -40,4 +40,28 @@ public interface GameState {
 
     /** (추가 기능) 하드 드롭 착지 예상 Y 좌표 (고스트 피스용) */
     int getGhostY();
+
+    /**
+     * 줄 삭제 애니메이션 중인지 여부
+     *
+     * <p>애니메이션 중에는 현재 블럭이 이미 보드에 고정되어 있으므로 현재 블럭과 고스트를 그리지 않는다.
+     * 일시정지와는 별개의 상태이며, 이 동안에는 일시정지 키를 포함한 모든 입력을 받지 않는다.
+     *
+     * <p>애니메이션이 없는 구현을 위해 기본값은 {@code false}
+     */
+    default boolean isClearing() {
+        return false;
+    }
+
+    /**
+     * 애니메이션이 끝나면 지워질 칸
+     *
+     * <p>{@link #getBoard()}와 같은 크기이며 지워질 칸이 {@code true}이다.
+     *
+     * <p>애니메이션 중이 아니면 모든 칸이 {@code false}
+     */
+    default boolean[][] getClearingCells() {
+        int[][] board = getBoard();
+        return new boolean[board.length][board.length == 0 ? 0 : board[0].length];
+    }
 }

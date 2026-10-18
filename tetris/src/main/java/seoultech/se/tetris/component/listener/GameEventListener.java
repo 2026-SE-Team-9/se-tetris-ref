@@ -12,4 +12,14 @@ public interface GameEventListener {
 
     /** 게임 오버가 발생했을 때 호출 (최종 점수 전달) */
     void onGameOver(int finalScore);
+
+    /**
+     * 줄 삭제 애니메이션이 시작되었을 때 호출
+     *
+     * <p>애니메이션 길이를 재는 타이머가 받아서,
+     * 시간이 다 되면 {@code GameController#finishClearing()}을 호출한다.
+     * 필요한 리스너만 구현하도록 기본 동작은 아무것도 하지 않는 것이다.
+     */
+    default void onClearingStarted() {
+    }
 }

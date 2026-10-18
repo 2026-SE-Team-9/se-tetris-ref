@@ -44,6 +44,7 @@ class TetrisEngineTest {
         int boardUpdated;
         int speedIncreased;
         int gameOver;
+        int clearingStarted;
         int lastFinalScore;
         final List<int[]> linesCleared = new ArrayList<>();   // {줄 수, 얻은 점수}
         final List<Integer> intervals = new ArrayList<>();
@@ -68,6 +69,11 @@ class TetrisEngineTest {
         public void onGameOver(int finalScore) {
             gameOver++;
             lastFinalScore = finalScore;
+        }
+
+        @Override
+        public void onClearingStarted() {
+            clearingStarted++;
         }
     }
 
@@ -551,10 +557,28 @@ class TetrisEngineTest {
             return created;
         }
 
-        /** 세로로 세운 I 블럭을 바닥까지 떨어뜨린다. */
+        /**
+         * 바닥까지 떨어뜨리고, 줄 삭제 애니메이션이 시작되면 바로 끝낸다.
+         *
+         * <p>실제 게임에서는 고정 길이 타이머가 {@code finishClearing()}을 부르지만,
+         * 엔진은 타이머를 갖지 않으므로 테스트에서 직접 부른다. 애니메이션이 없으면 아무 일도 하지 않는다.
+         */
+        private void dropAndClear(TetrisEngine target) {
+            target.dropToBottom();
+            target.finishClearing();
+        }
+
+        /** 세로로 세운 I 블럭을 바닥까지 떨어뜨리고 줄 삭제를 마친다. */
         private void dropVerticalI(TetrisEngine target) {
             target.rotate();
-            target.dropToBottom();
+            dropAndClear(target);
+        }
+
+        /** 19행을 가로 I 자리(3~6열)만 비워 둔 보드. 가로 I를 떨어뜨리면 한 줄을 지운다. */
+        private TetrisEngine engineWithSingleLineReady() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            fillRows(grid, 19, 19, 3, 4, 5, 6);
+            return engineWith(grid);
         }
 
         /** onLinesCleared로 받은 (줄 수, 얻은 점수) 목록. */
@@ -571,7 +595,7 @@ class TetrisEngineTest {
             fillRows(grid, 19, 19, 3, 4, 5, 6);
             TetrisEngine target = engineWith(grid);
 
-            target.dropToBottom();          // 가로 I가 18칸 떨어져 19행을 채운다
+            dropAndClear(target);           // 가로 I가 18칸 떨어져 19행을 채운다
 
             assertEquals(1, target.getLinesCleared());
             assertEquals(List.of(List.of(1, 100)), clearEvents());
@@ -616,7 +640,7 @@ class TetrisEngineTest {
             TetrisEngine target = engineWith(grid);
 
             dropVerticalI(target);          // 16~19행 삭제 → 위 줄들이 4칸 내려온다
-            target.dropToBottom();          // 가로 I로 한 줄 삭제 → 연속이 끊긴다
+            dropAndClear(target);           // 가로 I로 한 줄 삭제 → 연속이 끊긴다
             dropVerticalI(target);          // 다시 네 줄 삭제지만 백투백이 아니다
 
             assertEquals(List.of(List.of(4, 1000), List.of(1, 100), List.of(4, 1000)),
@@ -680,6 +704,158 @@ class TetrisEngineTest {
                 assertEquals(List.of(specLevel2IntervalMs(difficulty)), events.intervals,
                         difficulty.name());
             }
+        }
+
+        // --------------------------------------------------------------
+        // 줄 삭제 애니메이션
+        // --------------------------------------------------------------
+
+        @Test
+        @DisplayName("줄이 가득 차면 바로 지우지 않고 애니메이션을 시작한다")
+        void startsClearingInsteadOfRemovingAtOnce() {
+            TetrisEngine target = engineWithSingleLineReady();
+
+            target.dropToBottom();
+
+            assertTrue(target.isClearing());
+            assertFalse(target.isPaused());
+            for (int cell : target.getBoard()[19]) {
+                assertTrue(cell != BlockType.EMPTY_CODE, "지울 줄이 아직 보드에 남아 있어야 한다");
+            }
+            assertEquals(0, target.getLinesCleared());
+            assertTrue(clearEvents().isEmpty());
+            assertEquals(18, target.getScore());         // 하드 드롭 점수만 반영
+            assertEquals(1, target.getBlocksSpawned());  // 다음 블럭은 아직 생성하지 않는다
+            assertEquals(1, events.clearingStarted);
+        }
+
+        @Test
+        @DisplayName("애니메이션 동안 지워질 칸을 알려준다")
+        void reportsClearingCells() {
+            TetrisEngine target = engineWithSingleLineReady();
+            assertFalse(target.getClearingCells()[19][0]);
+
+            target.dropToBottom();
+
+            boolean[][] cells = target.getClearingCells();
+            assertEquals(Board.VISIBLE_HEIGHT, cells.length);
+            for (int c = 0; c < Board.WIDTH; c++) {
+                assertTrue(cells[19][c]);
+                assertFalse(cells[18][c]);
+            }
+        }
+
+        @Test
+        @DisplayName("애니메이션 동안에는 일시정지를 포함한 모든 조작을 무시한다")
+        void ignoresInputWhileClearing() {
+            TetrisEngine target = engineWithSingleLineReady();
+            target.dropToBottom();
+            int[][] before = target.getBoard();
+            Block blockBefore = target.getCurrentBlock();
+
+            target.moveLeft();
+            target.moveRight();
+            target.moveDown();
+            target.rotate();
+            target.rotateCounterclockwise();
+            target.dropToBottom();
+            target.pauseGame();
+            target.togglePause();
+
+            assertTrue(target.isClearing());
+            assertFalse(target.isPaused());
+            assertSame(blockBefore, target.getCurrentBlock());
+            assertEquals(18, target.getScore());
+            for (int r = 0; r < Board.VISIBLE_HEIGHT; r++) {
+                for (int c = 0; c < Board.WIDTH; c++) {
+                    assertEquals(before[r][c], target.getBoard()[r][c]);
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("애니메이션이 끝나면 줄을 지우고 점수를 반영한 뒤 다음 블럭을 생성한다")
+        void finishClearingRemovesLinesAndSpawnsNext() {
+            TetrisEngine target = engineWithSingleLineReady();
+            target.dropToBottom();
+
+            target.finishClearing();
+
+            assertFalse(target.isClearing());
+            for (int cell : target.getBoard()[19]) {
+                assertEquals(BlockType.EMPTY_CODE, cell);
+            }
+            assertEquals(1, target.getLinesCleared());
+            assertEquals(List.of(List.of(1, 100)), clearEvents());
+            assertEquals(18 + 100, target.getScore());
+            assertEquals(2, target.getBlocksSpawned());
+            assertFalse(target.getClearingCells()[19][0]);
+        }
+
+        @Test
+        @DisplayName("애니메이션 중이 아닐 때 끝내기를 호출하면 아무 일도 하지 않는다")
+        void finishClearingIsIgnoredWhenNotClearing() {
+            TetrisEngine target = engineWithSingleLineReady();
+            int updatesBefore = events.boardUpdated;
+
+            target.finishClearing();
+
+            assertEquals(1, target.getBlocksSpawned());
+            assertEquals(0, target.getScore());
+            assertEquals(updatesBefore, events.boardUpdated);
+        }
+
+        @Test
+        @DisplayName("애니메이션 도중 중단하면 끝내기를 호출해도 줄을 지우지 않는다")
+        void exitDuringClearingCancelsIt() {
+            TetrisEngine target = engineWithSingleLineReady();
+            target.dropToBottom();
+
+            target.exitGame();
+            target.finishClearing();
+
+            assertTrue(target.isGameOver());
+            assertFalse(target.isClearing());
+            assertEquals(0, target.getLinesCleared());
+            assertEquals(0, events.gameOver);
+        }
+
+        @Test
+        @DisplayName("애니메이션 도중 재시작하면 애니메이션을 취소하고 새로 시작한다")
+        void restartDuringClearingCancelsIt() {
+            TetrisEngine target = engineWithSingleLineReady();
+            target.dropToBottom();
+
+            target.restartGame();
+            target.finishClearing();
+
+            assertFalse(target.isClearing());
+            assertEquals(0, target.getLinesCleared());
+            assertEquals(0, target.getScore());
+            assertEquals(1, target.getBlocksSpawned());
+        }
+
+        @Test
+        @DisplayName("애니메이션 도중 게임 종료 조건이 생기면 애니메이션을 마친 뒤 종료한다")
+        void gameOverComesAfterAnimation() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            fillRows(grid, 2, 2, 3, 4, 5, 6);       // 가로 I가 채울 줄
+            for (int c = 3; c <= 6; c++) {
+                grid[0][c] = FILLED;                 // 2행을 지우면 1행으로 내려와 생성 자리를 막는다
+                grid[3][c] = FILLED;                 // 가로 I가 2행에서 멈추도록 받친다
+            }
+            TetrisEngine target = engineWith(grid);
+
+            target.dropToBottom();
+            assertTrue(target.isClearing());
+            assertFalse(target.isGameOver());
+            assertEquals(0, events.gameOver);
+
+            target.finishClearing();
+
+            assertTrue(target.isGameOver());
+            assertEquals(1, events.gameOver);
+            assertEquals(1, target.getLinesCleared());
         }
 
         /**
