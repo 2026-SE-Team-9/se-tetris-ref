@@ -6,6 +6,8 @@ import javax.swing.SwingUtilities;
 import seoultech.se.tetris.ui.end.EndScreenFrame;
 import seoultech.se.tetris.ui.game.GameFrame;
 import seoultech.se.tetris.ui.menu.StartMenuFrame;
+import seoultech.se.tetris.ui.scoreboard.ScoreboardModel;
+import seoultech.se.tetris.ui.scoreboard.ScoreboardPanel;
 import seoultech.se.tetris.ui.settings.SettingsPanel;
 import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
@@ -55,7 +57,8 @@ public final class TetrisApplication implements ScreenNavigator {
 
     @Override
     public void navigateToScoreboard() {
-        System.out.println("스코어보드 선택");
+        menu.showScoreboard(new ScoreboardPanel(
+                new ScoreboardModel(new CsvScoreRepository(), () -> menu.showMenu())));
     }
 
     @Override
