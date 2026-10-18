@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -249,6 +250,113 @@ class BoardTest {
 
             assertEquals(4, board.clearFullLines());
             assertEquals("..........", rowOf(board, Board.HEIGHT - 1));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // fullRows / removeRows
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("fullRows()")
+    class FullRows {
+
+        @Test
+        @DisplayName("가득 찬 줄이 없으면 빈 목록을 반환한다")
+        void returnsEmptyWhenNoFullLine() {
+            Board board = boardWithBottomRows("XXXXXXXXX.");
+
+            assertEquals(List.of(), board.fullRows());
+        }
+
+        @Test
+        @DisplayName("가득 찬 줄을 아래쪽부터 반환한다")
+        void returnsFullRowsFromBottom() {
+            Board board = boardWithBottomRows(
+                    "XXXXXXXXXX",
+                    "X.........",
+                    "XXXXXXXXXX"
+            );
+
+            assertEquals(List.of(Board.HEIGHT - 1, Board.HEIGHT - 3), board.fullRows());
+        }
+
+        @Test
+        @DisplayName("찾기만 하고 보드는 바꾸지 않는다")
+        void doesNotModifyBoard() {
+            Board board = boardWithBottomRows("XXXXXXXXXX");
+
+            board.fullRows();
+
+            assertEquals("XXXXXXXXXX", rowOf(board, Board.HEIGHT - 1));
+        }
+    }
+
+    @Nested
+    @DisplayName("removeRows()")
+    class RemoveRows {
+
+        @Test
+        @DisplayName("가득 차지 않은 줄도 지정하면 삭제한다")
+        void removesRowEvenIfNotFull() {
+            Board board = boardWithBottomRows(
+                    "X.........",
+                    ".X........"
+            );
+
+            board.removeRows(List.of(Board.HEIGHT - 1));
+
+            assertEquals("X.........", rowOf(board, Board.HEIGHT - 1));
+            assertEquals("..........", rowOf(board, Board.HEIGHT - 2));
+        }
+
+        @Test
+        @DisplayName("떨어져 있는 여러 줄을 지우면 남은 줄이 순서를 유지한 채 내려온다")
+        void removesSeparatedRowsKeepingOrder() {
+            Board board = boardWithBottomRows(
+                    "X.........",   // 16행: 남음
+                    ".X........",   // 17행: 삭제
+                    "..X.......",   // 18행: 남음
+                    "...X......"    // 19행: 삭제
+            );
+
+            board.removeRows(List.of(Board.HEIGHT - 3, Board.HEIGHT - 1));
+
+            assertEquals("..X.......", rowOf(board, Board.HEIGHT - 1));
+            assertEquals("X.........", rowOf(board, Board.HEIGHT - 2));
+            assertEquals("..........", rowOf(board, Board.HEIGHT - 3));
+        }
+
+        @Test
+        @DisplayName("같은 줄이 여러 번 들어 있어도 한 번만 삭제한다")
+        void removesDuplicatedRowOnce() {
+            Board board = boardWithBottomRows(
+                    "X.........",
+                    ".X........"
+            );
+
+            board.removeRows(List.of(Board.HEIGHT - 1, Board.HEIGHT - 1));
+
+            assertEquals("X.........", rowOf(board, Board.HEIGHT - 1));
+        }
+
+        @Test
+        @DisplayName("빈 목록이면 보드를 바꾸지 않는다")
+        void doesNothingForEmptyList() {
+            Board board = boardWithBottomRows(".X........");
+
+            board.removeRows(List.of());
+
+            assertEquals(".X........", rowOf(board, Board.HEIGHT - 1));
+        }
+
+        @Test
+        @DisplayName("보드 범위를 벗어난 행이면 예외가 발생한다")
+        void rejectsRowOutOfRange() {
+            Board board = new Board();
+
+            assertThrows(IllegalArgumentException.class, () -> board.removeRows(List.of(Board.HEIGHT)));
+            assertThrows(IllegalArgumentException.class, () -> board.removeRows(List.of(-1)));
         }
     }
 

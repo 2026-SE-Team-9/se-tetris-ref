@@ -1,5 +1,8 @@
 package seoultech.se.tetris.engine;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockType;
 
@@ -112,19 +115,9 @@ public class Board {
      * @return 삭제한 줄의 수
      */
     public int clearFullLines() {
-        int cleared = 0;
-
-        // 보드를 아래에서 위로 훑는다. 줄을 삭제한 경우 같은 행을 다시 확인해야 하므로 행 번호를 올리지 않는다.
-        for (int row = HEIGHT - 1; row >= 0; ) {
-            if (isFullLine(row)) {
-                removeLine(row);
-                cleared++;
-            } else {
-                row--;
-            }
-        }
-
-        return cleared;
+        List<Integer> full = fullRows();
+        removeRows(full);
+        return full.size();
     }
 
     /**
@@ -172,11 +165,51 @@ public class Board {
         return true;
     }
 
-    /** 한 줄을 지우고 그 위의 줄들을 한 칸씩 아래로 내린다. */
-    private void removeLine(int row) {
-        for (int r = row; r > 0; r--) {
-            System.arraycopy(grid[r - 1], 0, grid[r], 0, WIDTH);
+    /**
+     * 가득 찬 줄의 행 번호. 아래쪽 줄부터 담는다.
+     *
+     * <p>줄 삭제 애니메이션 동안 지울 줄을 표시하기 위해, 삭제와 분리해 찾기만 한다.
+     */
+    public List<Integer> fullRows() {
+        List<Integer> rows = new ArrayList<>();
+        for (int row = HEIGHT - 1; row >= 0; row--) {
+            if (isFullLine(row)) {
+                rows.add(row);
+            }
         }
-        java.util.Arrays.fill(grid[0], BlockType.EMPTY_CODE);
+        return rows;
+    }
+
+    /**
+     * 지정한 줄들을 삭제하고 그 위의 줄들을 삭제한 수만큼 아래로 내린다.
+     *
+     * <p>가득 찼는지는 확인하지 않는다. 줄 삭제 아이템처럼 꽉 차지 않은 줄을 지우는 경우에도 쓴다.
+     * 같은 행이 여러 번 들어 있어도 한 번만 삭제한다.
+     *
+     * @throws IllegalArgumentException 보드 범위를 벗어난 행이 있는 경우
+     */
+    public void removeRows(Collection<Integer> rows) {
+        boolean[] removed = new boolean[HEIGHT];
+        for (int row : rows) {
+            if (row < 0 || row >= HEIGHT) {
+                throw new IllegalArgumentException("보드 범위를 벗어난 행입니다: " + row);
+            }
+            removed[row] = true;
+        }
+
+        // 아래에서 위로 훑으며 남길 줄만 아래쪽부터 채운다. 남은 위쪽 줄은 빈 줄이 된다.
+        int write = HEIGHT - 1;
+        for (int read = HEIGHT - 1; read >= 0; read--) {
+            if (removed[read]) {
+                continue;
+            }
+            if (write != read) {
+                System.arraycopy(grid[read], 0, grid[write], 0, WIDTH);
+            }
+            write--;
+        }
+        for (; write >= 0; write--) {
+            java.util.Arrays.fill(grid[write], BlockType.EMPTY_CODE);
+        }
     }
 }
