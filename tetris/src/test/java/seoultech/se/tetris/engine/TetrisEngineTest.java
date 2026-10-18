@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -510,9 +511,14 @@ class TetrisEngineTest {
 
         private RecordingListener events;
 
-        /** 항상 같은 종류의 블럭만 주는 생성기. */
+        /** 항상 같은 종류의 블럭만 주는 생성기. 중간 난이도. */
         private BlockFactory always(BlockType type) {
-            return new BlockFactory(new Random(0)) {
+            return always(type, Difficulty.NORMAL);
+        }
+
+        /** 항상 같은 종류의 블럭만 주는 생성기. 난이도를 지정한다. */
+        private BlockFactory always(BlockType type, Difficulty difficulty) {
+            return new BlockFactory(new Random(0), difficulty) {
                 @Override
                 public BlockType next() {
                     return type;
@@ -532,9 +538,14 @@ class TetrisEngineTest {
             }
         }
 
-        /** 미리 채운 보드와 I 블럭만으로 엔진을 만들고 이벤트 기록을 시작한다. */
+        /** 미리 채운 보드와 I 블럭만으로 엔진을 만들고 이벤트 기록을 시작한다. 중간 난이도. */
         private TetrisEngine engineWith(int[][] grid) {
-            TetrisEngine created = new TetrisEngine(always(BlockType.I), new Board(grid));
+            return engineWith(grid, Difficulty.NORMAL);
+        }
+
+        /** 미리 채운 보드와 I 블럭만으로 엔진을 만들고 이벤트 기록을 시작한다. 난이도를 지정한다. */
+        private TetrisEngine engineWith(int[][] grid, Difficulty difficulty) {
+            TetrisEngine created = new TetrisEngine(always(BlockType.I, difficulty), new Board(grid));
             events = new RecordingListener();
             created.addListener(events);
             return created;
@@ -651,6 +662,89 @@ class TetrisEngineTest {
                     assertEquals(0, cell);
                 }
             }
+        }
+
+        @Test
+        @DisplayName("레벨이 오를 때 알리는 낙하 간격이 난이도에 따라 다르다")
+        void dropIntervalDependsOnDifficulty() {
+            for (Difficulty difficulty : Difficulty.values()) {
+                int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+                fillRows(grid, 8, 19, VERTICAL_I_COL);
+                TetrisEngine target = engineWith(grid, difficulty);
+
+                dropVerticalI(target);
+                dropVerticalI(target);
+                dropVerticalI(target);      // 12줄 → 레벨 2
+
+                assertEquals(2, target.getLevel(), difficulty.name());
+                assertEquals(List.of(specLevel2IntervalMs(difficulty)), events.intervals,
+                        difficulty.name());
+            }
+        }
+
+        /**
+         * 요구사항 문서의 레벨 2 낙하 간격(ms).
+         *
+         * <p>{@link LevelPolicy}로 계산하면 같은 식을 두 번 쓰는 셈이라 식이 틀려도 통과하므로,
+         * 문서의 값을 그대로 적는다.
+         */
+        private int specLevel2IntervalMs(Difficulty difficulty) {
+            return switch (difficulty) {
+                case EASY -> 840;
+                case NORMAL -> 800;
+                case HARD -> 760;
+            };
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 난이도
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("난이도")
+    class DifficultySetting {
+
+        @Test
+        @DisplayName("난이도를 지정하지 않으면 기본 난이도로 시작한다")
+        void usesDefaultDifficultyWhenNotGiven() {
+            assertSame(Difficulty.DEFAULT, new TetrisEngine().getDifficulty());
+        }
+
+        @Test
+        @DisplayName("지정한 난이도로 시작한다")
+        void usesGivenDifficulty() {
+            for (Difficulty difficulty : Difficulty.values()) {
+                assertSame(difficulty, new TetrisEngine(difficulty).getDifficulty());
+            }
+        }
+
+        @Test
+        @DisplayName("블럭 생성기를 넘기면 생성기의 난이도를 따른다")
+        void followsBlockFactoryDifficulty() {
+            for (Difficulty difficulty : Difficulty.values()) {
+                TetrisEngine created = new TetrisEngine(new BlockFactory(new Random(SEED), difficulty));
+
+                assertSame(difficulty, created.getDifficulty());
+            }
+        }
+
+        @Test
+        @DisplayName("재시작해도 난이도는 바뀌지 않는다")
+        void restartKeepsDifficulty() {
+            TetrisEngine hard = new TetrisEngine(new BlockFactory(new Random(SEED), Difficulty.HARD));
+            hard.dropToBottom();
+
+            hard.restartGame();
+
+            assertSame(Difficulty.HARD, hard.getDifficulty());
+        }
+
+        @Test
+        @DisplayName("난이도가 null이면 예외가 발생한다")
+        void rejectsNullDifficulty() {
+            // 생성자가 둘 다 인자 하나라 null만 넘기면 어느 쪽인지 정할 수 없으므로 형을 지정한다
+            assertThrows(NullPointerException.class, () -> new TetrisEngine((Difficulty) null));
         }
     }
 

@@ -41,6 +41,9 @@ public class TetrisEngine implements GameState, GameController {
     private final LevelPolicy levelPolicy;
     private final ScoreCalculator scoreCalculator;
 
+    /** 설정된 게임 난이도 */
+    private final Difficulty difficulty;
+
     /* 다음 블럭을 저장하는 큐 */
     private final Deque<BlockType> nextQueue = new ArrayDeque<>(NEXT_QUEUE_SIZE);
     /** 게임 이벤트를 받을 리스너 목록 */
@@ -60,13 +63,20 @@ public class TetrisEngine implements GameState, GameController {
         PLAYING, PAUSED, OVER
     }
 
-    /** 실제 게임용. 블럭의 등장 순서를 랜덤으로 설정한다. */
+    /** 실제 게임용. 기본 난이도, 블럭의 등장 순서를 랜덤으로 설정한다. */
     public TetrisEngine() {
-        this(new BlockFactory(new Random()));
+        this(Difficulty.DEFAULT);
+    }
+
+    /** 실제 게임용. 지정한 난이도, 블럭의 등장 순서를 랜덤으로 설정한다. */
+    public TetrisEngine(Difficulty difficulty) {
+        this(new BlockFactory(new Random(), difficulty));
     }
 
     /**
      * 블럭 생성기를 지정해 만든다.
+     *
+     * <p>난이도는 블럭 생성기의 난이도를 따른다. 블럭 확률과 속도 규칙 난이도를 통일한다.
      *
      * <p>시드를 고정한 {@link Random}을 넘기면 같은 순서가 재현되므로 테스트에 쓸 수 있다.
      */
@@ -83,7 +93,8 @@ public class TetrisEngine implements GameState, GameController {
     TetrisEngine(BlockFactory blockFactory, Board board) {
         this.board = Objects.requireNonNull(board, "Board는 null일 수 없습니다.");
         this.blockFactory = Objects.requireNonNull(blockFactory, "BlockFactory는 null일 수 없습니다.");
-        this.levelPolicy = new LevelPolicy();
+        this.difficulty = blockFactory.difficulty();
+        this.levelPolicy = new LevelPolicy(difficulty);
         this.scoreCalculator = new ScoreCalculator();
         start();
     }
@@ -451,5 +462,10 @@ public class TetrisEngine implements GameState, GameController {
     /** 지금까지 생성된 블럭 수. 레벨 계산과 테스트에 쓴다. */
     public int getBlocksSpawned() {
         return blocksSpawned;
+    }
+
+    /** 현재 게임 난이도. 점수 기록에도 동일한 난이도를 기록한다. */
+    public Difficulty getDifficulty() {
+        return difficulty;
     }
 }
