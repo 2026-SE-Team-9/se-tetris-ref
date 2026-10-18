@@ -1,5 +1,7 @@
 package seoultech.se.tetris.ui;
 
+import java.io.UncheckedIOException;
+
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
@@ -11,6 +13,7 @@ import seoultech.se.tetris.ui.scoreboard.ScoreboardPanel;
 import seoultech.se.tetris.ui.settings.SettingsPanel;
 import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
+import seoultech.se.tetris.engine.Difficulty;
 import seoultech.se.tetris.engine.GameMode;
 import seoultech.se.tetris.score.CsvScoreRepository;
 
@@ -20,6 +23,7 @@ public final class TetrisApplication implements ScreenNavigator {
     private StartMenuFrame menu;
     private GameFrame game;
     private EndScreenFrame endScreen;
+    private Difficulty currentDifficulty = Difficulty.DEFAULT;
 
     private TetrisApplication() {
     }
@@ -39,10 +43,27 @@ public final class TetrisApplication implements ScreenNavigator {
 
     @Override
     public void navigateToGame() {
+        // 창을 닫기 전에 읽어야, 읽기에 실패해도 화면이 모두 닫힌 채로 남지 않는다.
+        currentDifficulty = savedDifficulty(new PropertiesAppSettingsService());
         closeMenu();
         closeEndScreen();
         closeGame();
-        game = GameFrame.launch(this::navigateToGameOver, this::navigateToMenu);
+        game = GameFrame.launch(currentDifficulty, this::navigateToGameOver, this::navigateToMenu);
+    }
+
+    /**
+     * 저장된 난이도. 설정 파일을 읽을 수 없으면 기본 난이도로 시작한다.
+     *
+     * <p>파일 내용이 손상된 경우는 설정 서비스가 이미 기본값으로 복구하므로,
+     * 여기서는 파일 자체를 읽지 못한 경우(입출력 오류)만 처리한다.
+     */
+    static Difficulty savedDifficulty(PropertiesAppSettingsService settings) {
+        try {
+            settings.load();
+        } catch (UncheckedIOException e) {
+            // 읽지 못하면 current()는 기본값(AppSettings.DEFAULT) 그대로다
+        }
+        return settings.current().difficulty();
     }
 
     @Override
@@ -65,11 +86,9 @@ public final class TetrisApplication implements ScreenNavigator {
     public void navigateToGameOver(int finalScore) {
         closeGame();
         closeEndScreen();
-        PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
-        settings.load();
         // 모드 선택 기능이 생기기 전까지는 일반 모드로 기록한다. 저장소는 판마다 새로 만들어 파일에서 다시 읽는다.
         endScreen = new EndScreenFrame(this, finalScore, GameMode.NORMAL,
-                settings.current().difficulty(), new CsvScoreRepository());
+                currentDifficulty, new CsvScoreRepository());
         endScreen.showScreen();
     }
 

@@ -12,6 +12,7 @@ import javax.swing.SwingUtilities;
 import seoultech.se.tetris.component.listener.GameEventListener;
 import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
+import seoultech.se.tetris.engine.Difficulty;
 import seoultech.se.tetris.engine.TetrisEngine;
 import seoultech.se.tetris.score.CsvScoreRepository;
 import seoultech.se.tetris.ui.GameKeyInput;
@@ -40,24 +41,30 @@ public class GameFrame extends JFrame {
 
     /**
      * 게임 화면을 연다. 게임 오버 시에는 보드 위 문구만 남긴다.
+     * 단독 실행용으로 설정 파일 없이 기본 난이도로 실행한다.
      * Swing 이벤트 스레드에서 호출한다.
      */
     public static GameFrame launch() {
-        return launch(null, () -> TetrisApplication.main(new String[0]));
+        return launch(null);
     }
 
     /**
      * 게임 화면을 연다. 게임을 더 진행할 수 없으면 {@code onGameOver}에 최종 점수를 넘긴다.
      * 콜백이 없으면 보드 위에 종료 문구만 남긴다.
+     * 단독 실행용으로 설정 파일 없이 기본 난이도로 실행한다.
      * Swing 이벤트 스레드에서 호출한다.
      */
     public static GameFrame launch(IntConsumer onGameOver) {
-        return launch(onGameOver, () -> TetrisApplication.main(new String[0]));
+        return launch(Difficulty.DEFAULT, onGameOver, () -> TetrisApplication.main(new String[0]));
     }
 
-    /** 앱의 타이틀 화면 복귀 동작을 연결하여 게임 화면을 연다. */
-    public static GameFrame launch(IntConsumer onGameOver, Runnable onReturnToTitle) {
-        TetrisEngine engine = new TetrisEngine();
+    /** 앱의 타이틀 화면 복귀 동작을 연결하여 게임 화면을 연다.
+     *
+     * <p>난이도는 호출하는 쪽에서 결정한다.
+     * 현재 게임은 게임 도중 설정 파일이 바뀌어도 난이도는 바뀌지 않는다.
+     */
+    public static GameFrame launch(Difficulty difficulty, IntConsumer onGameOver, Runnable onReturnToTitle) {
+        TetrisEngine engine = new TetrisEngine(difficulty);
         GamePanel panel = new GamePanel(engine, savedScale());
         GameFrame frame = new GameFrame(panel);
 
