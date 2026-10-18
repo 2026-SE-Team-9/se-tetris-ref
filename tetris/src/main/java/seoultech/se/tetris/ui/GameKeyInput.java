@@ -77,14 +77,16 @@ public final class GameKeyInput extends KeyAdapter {
         }
     }
 
-    /** 연결된 화면의 키를 액션으로 찾아 실행한다. 일시정지 중 조작과 게임 종료 후 입력은 무시한다. */
+    /** 연결된 화면의 키를 액션으로 찾아 실행한다. 일시정지 중 조작과 게임 종료 후 입력은 무시한다.
+     * 줄 삭제 애니메이션 중에는 입력을 무시한다.
+     */
     @Override
     public void keyPressed(KeyEvent event) {
         if (attachedComponent == null || event.getComponent() != attachedComponent) {
             return;
         }
         GameAction action = actionsByKey.get(event.getKeyCode());
-        if (action == null || state.isGameOver()) {
+        if (action == null || state.isGameOver() || state.isClearing()) {
             return;
         }
         if (action == GameAction.PAUSE_MENU) {

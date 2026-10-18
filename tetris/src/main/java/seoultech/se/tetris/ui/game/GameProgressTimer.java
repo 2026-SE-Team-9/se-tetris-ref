@@ -18,7 +18,7 @@ public final class GameProgressTimer implements GameEventListener {
         this.state = Objects.requireNonNull(state, "state");
         this.controller = Objects.requireNonNull(controller, "controller");
         timer = new Timer(LevelPolicy.INITIAL_INTERVAL_MS, event -> {
-            if (!state.isPaused() && !state.isGameOver()) {
+            if (!state.isPaused() && !state.isGameOver() && !state.isClearing()) {
                 controller.moveDown();
             }
         });
@@ -57,7 +57,7 @@ public final class GameProgressTimer implements GameEventListener {
     }
 
     private void syncWithState() {
-        if (!started || state.isPaused() || state.isGameOver()) {
+        if (!started || state.isPaused() || state.isGameOver() || state.isClearing()) {
             timer.stop();
         } else if (!timer.isRunning()) {
             timer.start();
