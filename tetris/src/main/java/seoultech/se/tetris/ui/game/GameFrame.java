@@ -2,6 +2,7 @@ package seoultech.se.tetris.ui.game;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.UncheckedIOException;
 import java.util.function.IntConsumer;
 
 import javax.swing.JFrame;
@@ -57,7 +58,7 @@ public class GameFrame extends JFrame {
     /** 앱의 타이틀 화면 복귀 동작을 연결하여 게임 화면을 연다. */
     public static GameFrame launch(IntConsumer onGameOver, Runnable onReturnToTitle) {
         TetrisEngine engine = new TetrisEngine();
-        GamePanel panel = new GamePanel(engine);
+        GamePanel panel = new GamePanel(engine, savedScale());
         GameFrame frame = new GameFrame(panel);
 
         GameProgressTimer timer = new GameProgressTimer(engine, engine);
@@ -91,9 +92,11 @@ public class GameFrame extends JFrame {
         };
         Runnable showSettings = () -> {
             PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
-            settings.load();
+            loadOrKeep(settings);
             SettingsPanel settingsPanel = new SettingsPanel(settings, keyConfig, new CsvScoreRepository(),
                     SettingsPanel.Context.IN_GAME, input::applyKeyBindings, () -> {
+                        // 저장했다면 바뀐 화면 크기를 반영하고, 취소했다면 그대로 둔다.
+                        panel.setScale(settings.current().screenSize().scale());
                         frame.setContentPane(panel);
                         frame.pack();
                         frame.setLocationRelativeTo(null);
@@ -133,5 +136,20 @@ public class GameFrame extends JFrame {
         panel.requestFocusInWindow();
         timer.start();
         return frame;
+    }
+
+    /** 저장된 화면 크기의 배율. 설정을 읽을 수 없으면 기본 크기로 연다. */
+    private static double savedScale() {
+        PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
+        loadOrKeep(settings);
+        return settings.current().screenSize().scale();
+    }
+
+    private static void loadOrKeep(PropertiesAppSettingsService settings) {
+        try {
+            settings.load();
+        } catch (UncheckedIOException e) {
+            // 읽지 못하면 기본 설정으로 계속한다
+        }
     }
 }
