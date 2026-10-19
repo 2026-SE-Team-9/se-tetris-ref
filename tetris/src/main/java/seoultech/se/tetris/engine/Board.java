@@ -7,12 +7,13 @@ import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockType;
 
 /**
- * 블럭이 쌓이는 20줄 × 10칸의 보드.
+ * 블럭이 쌓이는 20줄 × 10칸의 보드
  *
  * <p>고정된 블럭들만 보관한다. 현재 떨어지고 있는 블럭은 이 안에 없으며,
  * 바닥이나 다른 블럭에 닿아 더 내려갈 수 없을 때 {@link #place(Block)}로 들어온다.
  *
- * <p>각 칸에는 {@link BlockType#code()}가 저장되고, 빈 칸은 {@link BlockType#EMPTY_CODE}다.
+ * <p>각 칸에는 칸 번호가 저장된다. 테트로미노는 {@link BlockType#code()}, 아이템은 {@link seoultech.se.tetris.blocks.ItemType#code()}이며
+ * 빈 칸은 {@link seoultech.se.tetris.blocks.CellCode#EMPTY}다. 번호와 종류의 대응은 {@link seoultech.se.tetris.blocks.CellCode}에서 확인한다.
  * <p>계층 규칙에 따라 색을 저장하지 않으므로 색맹 모드 전환은 이 클래스에 영향을 주지 않는다.
  * <p>(계층 규칙 2 — 모델은 색을 모른다)
  */
@@ -39,7 +40,7 @@ public class Board {
     /** 새 블럭이 생성되는 행. 숨은 영역이 있으면 그 위쪽에서 시작한다. */
     public static final int SPAWN_ROW = 0;
 
-    /** [행][열] 순서. 값은 블럭 종류 번호이며 0은 빈 칸이다. */
+    /** [행][열] 순서. 값은 칸 번호({@link seoultech.se.tetris.blocks.CellCode})이며 0은 빈 칸이다. */
     private final int[][] grid;
 
     public Board() {
@@ -99,11 +100,10 @@ public class Board {
             throw new IllegalArgumentException("놓을 수 없는 위치입니다: " + block);
         }
 
-        int code = block.type().code();
         for (int r = 0; r < BlockType.SIZE; r++) {
             for (int c = 0; c < BlockType.SIZE; c++) {
                 if (block.isFilled(r, c)) {
-                    grid[block.boardRow(r)][block.boardCol(c)] = code;
+                    grid[block.boardRow(r)][block.boardCol(c)] = block.codeAt(r, c);
                 }
             }
         }
@@ -130,7 +130,7 @@ public class Board {
         return grid[row][col] == BlockType.EMPTY_CODE;
     }
 
-    /** 지정한 칸의 블럭 종류 번호. 빈 칸이면 {@link BlockType#EMPTY_CODE}. */
+    /** 지정한 칸의 칸 번호. 테트로미노 또는 아이템 번호이며, 빈 칸이면 {@link seoultech.se.tetris.blocks.CellCode#EMPTY}. 해석은 {@link seoultech.se.tetris.blocks.CellCode}를 거친다. */
     public int codeAt(int row, int col) {
         return grid[row][col];
     }

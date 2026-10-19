@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockType;
+import seoultech.se.tetris.blocks.ItemType;
 
 @DisplayName("Board")
 class BoardTest {
@@ -149,6 +150,34 @@ class BoardTest {
             assertEquals(BlockType.T.code(), board.codeAt(6, 3));
             assertEquals(BlockType.T.code(), board.codeAt(6, 4));
             assertEquals(BlockType.T.code(), board.codeAt(6, 5));
+        }
+
+        @Test
+        @DisplayName("아이템이 붙은 칸에는 아이템 번호가 기록된다")
+        void writesItemCode() {
+            Board board = new Board();
+            // T 상태0의 윗칸(격자 0행 1열)에 D를 붙인다
+            Block block = Block.of(BlockType.T, 5, 3).withItem(ItemType.DOUBLE_OR_NOTHING, 0, 1);
+
+            board.place(block);
+
+            assertEquals(ItemType.DOUBLE_OR_NOTHING.code(), board.codeAt(5, 4));
+            assertEquals(BlockType.T.code(), board.codeAt(6, 4));
+        }
+
+        @Test
+        @DisplayName("독립형 아이템은 모든 칸에 아이템 번호가 기록된다")
+        void writesStandaloneItemCode() {
+            Board board = new Board();
+
+            board.place(Block.of(ItemType.CRUSHER, 0, 0));
+
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 3; c++) {
+                    assertEquals(ItemType.CRUSHER.code(), board.codeAt(r, c));
+                }
+            }
+            assertTrue(board.isEmpty(0, 3));
         }
 
         @Test
