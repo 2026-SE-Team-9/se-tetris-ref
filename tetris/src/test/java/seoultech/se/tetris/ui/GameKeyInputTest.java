@@ -145,6 +145,30 @@ class GameKeyInputTest {
         assertEquals(List.of(), controller.calls);
     }
 
+    /** 줄 삭제 애니메이션 중에는 조작과 일시정지 메뉴 요청을 모두 무시한다. */
+    @Test
+    void blocksAllInputWhileClearing() {
+        TestState state = new TestState();
+        RecordingController controller = new RecordingController(state);
+        int[] menuRequests = {0};
+        GameKeyInput input = new GameKeyInput(config(), controller, state, () -> menuRequests[0]++);
+        JPanel panel = new JPanel();
+        input.attachTo(panel);
+
+        state.clearing = true;
+        press(input, panel, KeyEvent.VK_LEFT);
+        press(input, panel, KeyEvent.VK_SPACE);
+        press(input, panel, KeyEvent.VK_UP);
+        press(input, panel, KeyEvent.VK_ESCAPE);
+
+        assertEquals(List.of(), controller.calls);
+        assertEquals(0, menuRequests[0]);
+
+        state.clearing = false;
+        press(input, panel, KeyEvent.VK_LEFT);
+        assertEquals(List.of("left"), controller.calls);
+    }
+
     /** Esc는 종료 대신 일시정지 메뉴를 한 번 요청하며 반복 입력으로 재요청하지 않는다. */
     @Test
     void escapePausesAndRequestsMenuWithoutExiting() {
@@ -215,6 +239,7 @@ class GameKeyInputTest {
     private static final class TestState implements GameState {
         boolean paused;
         boolean gameOver;
+        boolean clearing;
 
         @Override public int[][] getBoard() { return new int[0][0]; }
         @Override public Block getCurrentBlock() { return null; }
@@ -227,6 +252,7 @@ class GameKeyInputTest {
         @Override public boolean isPaused() { return paused; }
         @Override public boolean isGameOver() { return gameOver; }
         @Override public int getGhostY() { return 0; }
+        @Override public boolean isClearing() { return clearing; }
     }
 
     private static final class RecordingController implements GameController {

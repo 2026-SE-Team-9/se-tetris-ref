@@ -70,6 +70,8 @@ public class GameFrame extends JFrame {
 
         GameProgressTimer timer = new GameProgressTimer(engine, engine);
         engine.addListener(timer);
+        ClearAnimationTimer clearTimer = new ClearAnimationTimer(engine);
+        engine.addListener(clearTimer);
         engine.addListener(new GameEventListener() {
             @Override public void onBoardUpdated() { panel.repaint(); }
             @Override public void onLinesCleared(int clearedCount, int gainedScore) { }
@@ -133,6 +135,8 @@ public class GameFrame extends JFrame {
             private void releaseGame() {
                 timer.stop();
                 engine.removeListener(timer);
+                clearTimer.stop();
+                engine.removeListener(clearTimer);
                 input.detach();
             }
 

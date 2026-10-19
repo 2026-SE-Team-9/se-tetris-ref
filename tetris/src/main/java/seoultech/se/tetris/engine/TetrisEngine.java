@@ -58,9 +58,17 @@ public class TetrisEngine implements GameState, GameController {
     private boolean lastClearWasBackToBackEligible;
     private Status status;
 
-    /** 게임의 상태. 진행중, 일시정지, 종료 상태를 나타낸다 */
+    /** 애니메이션이 끝나면 지울 줄. 애니메이션 중이 아니면 비어 있다. */
+    private List<Integer> clearingRows = List.of();
+
+    /**
+     * 게임의 상태. 진행중, 일시정지, 줄 삭제 애니메이션, 종료 상태를 나타낸다.
+     *
+     * <p>애니메이션 표시 상태(CLEARING)는 사용자의 일시정지 상태(PAUSED)와 구분한다.
+     * 같은 상태를 쓰면 애니메이션 도중 일시정지 메뉴가 뜨거나, 일시정지 해제로 애니메이션을 건너뛰게 된다.
+     */
     private enum Status {
-        PLAYING, PAUSED, OVER
+        PLAYING, PAUSED, CLEARING, OVER
     }
 
     /** 실제 게임용. 기본 난이도, 블럭의 등장 순서를 랜덤으로 설정한다. */
@@ -142,6 +150,12 @@ public class TetrisEngine implements GameState, GameController {
         }
     }
 
+    private void fireClearingStarted() {
+        for (GameEventListener listener : listeners) {
+            listener.onClearingStarted();
+        }
+    }
+
     // ------------------------------------------------------------------
     // 진행
     // ------------------------------------------------------------------
@@ -159,6 +173,7 @@ public class TetrisEngine implements GameState, GameController {
         blocksSpawned = 0;
         level = LevelPolicy.INITIAL_LEVEL;
         lastClearWasBackToBackEligible = false;
+        clearingRows = List.of();
         status = Status.PLAYING;
 
         fillQueue();
@@ -198,29 +213,73 @@ public class TetrisEngine implements GameState, GameController {
         }
     }
 
-    /** 현재 블럭을 보드에 고정하고 줄 삭제와 점수 처리를 한 뒤 다음 블럭을 생성한다.
+    /**
+     * 현재 블럭을 보드에 고정한다.
+     *
+     * <p>가득 찬 줄이 있으면 바로 지우지 않고 줄 삭제 애니메이션을 시작한다.
+     * 줄 삭제와 점수 처리, 다음 블럭 생성은 애니메이션이 끝나는 {@link #finishClearing()}에서 한다.
+     * 가득 찬 줄이 없으면 바로 다음 블럭을 생성한다.
+     */
+    private void lockCurrentBlock() {
+        board.place(current);
+
+        List<Integer> fullRows = board.fullRows();
+        if (!fullRows.isEmpty()) {
+            startClearing(fullRows);
+            return;
+        }
+        spawnNextAndNotify();
+    }
+
+    /** 줄 삭제 애니메이션을 시작한다. 지울 줄을 보관하고 입력을 막는다. */
+    private void startClearing(List<Integer> rows) {
+        clearingRows = List.copyOf(rows);
+        status = Status.CLEARING;
+        fireBoardUpdated();
+        fireClearingStarted();
+    }
+
+    /**
+     * 줄 삭제 애니메이션을 마치고, 보관한 줄을 지운 뒤 점수를 계산하고 다음 블럭을 생성한다.
      *
      * <p>백투백 조건은 직전 줄 삭제와 이번 줄 삭제가 모두 백투백 조건을 만족하는 것
      * <p>백투백은 조건을 연속으로 만족하는 경우 계속 이어질 수 있다.
      * 백투백 조건이 되는 줄 수 미만의 줄을 삭제하면 연속 백투백이 끊긴다.
      * 줄을 삭제하지 않는 동작은 백투백 조건에 영향이 없다.
+     *
+     * <p>애니메이션 중이 아니면(중단·재시작으로 이미 끝난 경우 포함) 아무 일도 하지 않는다.
      */
-    private void lockCurrentBlock() {
-        board.place(current);
-
-        int cleared = board.clearFullLines();
-        if (cleared > 0) {
-            boolean backToBack = lastClearWasBackToBackEligible
-                    && scoreCalculator.isBackToBackEligible(cleared);
-            int gained = scoreCalculator.lineClearScore(cleared, level, backToBack);
-
-            score += gained;
-            linesCleared += cleared;
-            lastClearWasBackToBackEligible = scoreCalculator.isBackToBackEligible(cleared);
-
-            fireLinesCleared(cleared, gained);
+    @Override
+    public void finishClearing() {
+        if (status != Status.CLEARING) {
+            return;
         }
 
+        int cleared = clearingRows.size();
+        board.removeRows(clearingRows);
+        clearingRows = List.of();
+
+        boolean backToBack = lastClearWasBackToBackEligible
+                && scoreCalculator.isBackToBackEligible(cleared);
+        int gained = scoreCalculator.lineClearScore(cleared, level, backToBack);
+
+        score += gained;
+        linesCleared += cleared;
+        lastClearWasBackToBackEligible = scoreCalculator.isBackToBackEligible(cleared);
+
+        fireLinesCleared(cleared, gained);
+
+        status = Status.PLAYING;
+        spawnNextAndNotify();
+    }
+
+    /**
+     * 다음 블럭을 생성하고 화면 갱신을 알린다. 생성할 자리가 없으면 게임 오버를 알린다.
+     *
+     * <p>애니메이션 도중 게임 종료 조건이 생겨도 생성은 애니메이션이 끝난 뒤에 하므로,
+     * 게임 오버는 항상 애니메이션을 마친 뒤에 알린다.
+     */
+    private void spawnNextAndNotify() {
         spawnNext();
         fireBoardUpdated();
         if (status == Status.OVER) {
@@ -457,6 +516,26 @@ public class TetrisEngine implements GameState, GameController {
     @Override
     public boolean isGameOver() {
         return status == Status.OVER;
+    }
+
+    @Override
+    public boolean isClearing() {
+        return status == Status.CLEARING;
+    }
+
+    @Override
+    public boolean[][] getClearingCells() {
+        boolean[][] cells = new boolean[Board.VISIBLE_HEIGHT][Board.WIDTH];
+        if (status != Status.CLEARING) {
+            return cells;
+        }
+        for (int row : clearingRows) {
+            int visibleRow = row - Board.BUFFER_HEIGHT;
+            if (visibleRow >= 0) {
+                java.util.Arrays.fill(cells[visibleRow], true);
+            }
+        }
+        return cells;
     }
 
     /** 지금까지 생성된 블럭 수. 레벨 계산과 테스트에 쓴다. */
