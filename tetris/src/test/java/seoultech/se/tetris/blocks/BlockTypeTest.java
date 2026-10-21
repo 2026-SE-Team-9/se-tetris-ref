@@ -250,4 +250,83 @@ class BlockTypeTest {
             }
         }
     }
+
+    // ------------------------------------------------------------------
+    // 회전할 때 칸의 대응
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("rotateCellClockwise() / rotateCellCounterClockwise()")
+    class CellRotation {
+
+        @Test
+        @DisplayName("채워진 칸은 회전한 뒤에도 채워진 칸으로 옮겨간다")
+        void filledCellStaysFilledAfterRotation() {
+            for (BlockType type : BlockType.values()) {
+                for (int rotation = 0; rotation < BlockType.ROTATIONS; rotation++) {
+                    for (int r = 0; r < BlockType.SIZE; r++) {
+                        for (int c = 0; c < BlockType.SIZE; c++) {
+                            if (!type.isFilled(rotation, r, c)) {
+                                continue;
+                            }
+                            int[] cw = type.rotateCellClockwise(r, c);
+                            int[] ccw = type.rotateCellCounterClockwise(r, c);
+                            String where = type + " 회전 " + rotation + " (" + r + ", " + c + ")";
+                            assertTrue(type.isFilled(rotation + 1, cw[0], cw[1]), where + " 시계방향");
+                            assertTrue(type.isFilled(rotation - 1, ccw[0], ccw[1]), where + " 반시계방향");
+                        }
+                    }
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("같은 방향으로 네 번 돌리면 처음 칸으로 돌아온다")
+        void fourRotationsReturnToStart() {
+            for (BlockType type : BlockType.values()) {
+                for (int r = 0; r < BlockType.SIZE; r++) {
+                    for (int c = 0; c < BlockType.SIZE; c++) {
+                        if (!type.isFilled(0, r, c)) {
+                            continue;
+                        }
+                        int[] cell = {r, c};
+                        for (int i = 0; i < BlockType.ROTATIONS; i++) {
+                            cell = type.rotateCellClockwise(cell[0], cell[1]);
+                        }
+                        assertEquals(r, cell[0], type.toString());
+                        assertEquals(c, cell[1], type.toString());
+                    }
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("반시계방향은 시계방향의 반대로 옮긴다")
+        void counterClockwiseUndoesClockwise() {
+            for (BlockType type : BlockType.values()) {
+                for (int r = 0; r < BlockType.SIZE; r++) {
+                    for (int c = 0; c < BlockType.SIZE; c++) {
+                        int[] cw = type.rotateCellClockwise(r, c);
+                        int[] back = type.rotateCellCounterClockwise(cw[0], cw[1]);
+                        assertEquals(r, back[0], type.toString());
+                        assertEquals(c, back[1], type.toString());
+                    }
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("O형은 2×2 정사각형 안에서 시계방향으로 한 칸씩 돈다")
+        void oBlockRotatesWithinSquare() {
+            // .OO.  왼쪽 위(0, 1) → 오른쪽 위(0, 2) → 오른쪽 아래(1, 2) → 왼쪽 아래(1, 1) → 왼쪽 위
+            // .OO.
+            int[][] expected = {{0, 2}, {1, 2}, {1, 1}, {0, 1}};
+            int[] cell = {0, 1};
+            for (int[] next : expected) {
+                cell = BlockType.O.rotateCellClockwise(cell[0], cell[1]);
+                assertEquals(next[0], cell[0]);
+                assertEquals(next[1], cell[1]);
+            }
+        }
+    }
 }

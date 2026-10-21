@@ -3,6 +3,7 @@ package seoultech.se.tetris.blocks;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -221,6 +222,147 @@ class BlockTest {
             assertEquals(
                     new Block(BlockType.Z, 1, 5, 3),
                     new Block(BlockType.Z, 5, 5, 3));
+        }
+
+        @Test
+        @DisplayName("붙은 아이템이나 그 위치가 다르면 다른 블럭이다")
+        void notEqualWhenItemDiffers() {
+            Block plain = Block.of(BlockType.I, 0, 0);
+            Block lineClear = plain.withItem(ItemType.LINE_CLEAR, 1, 0);
+
+            assertNotEquals(plain, lineClear);
+            assertNotEquals(lineClear, plain.withItem(ItemType.DOUBLE_OR_NOTHING, 1, 0));
+            assertNotEquals(lineClear, plain.withItem(ItemType.LINE_CLEAR, 1, 1));
+            assertEquals(lineClear, plain.withItem(ItemType.LINE_CLEAR, 1, 0));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 아이템
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("포함형 아이템")
+    class EmbeddedItem {
+
+        @Test
+        @DisplayName("붙인 칸은 아이템 번호, 나머지 채워진 칸은 블럭 번호, 빈 칸은 빈 칸 번호다")
+        void codeAtDistinguishesItemCell() {
+            Block block = Block.of(BlockType.I, 0, 0).withItem(ItemType.LINE_CLEAR, 1, 2);
+
+            assertEquals(ItemType.LINE_CLEAR.code(), block.codeAt(1, 2));
+            assertEquals(BlockType.I.code(), block.codeAt(1, 0));
+            assertEquals(CellCode.EMPTY, block.codeAt(0, 0));
+            assertEquals(ItemType.LINE_CLEAR, block.item());
+        }
+
+        @Test
+        @DisplayName("회전하면 붙은 칸도 같은 칸을 따라간다")
+        void itemFollowsRotation() {
+            // 가로 I의 맨 왼쪽 칸(1, 0)은 세로가 되면 맨 위 칸(0, 2)이 된다
+            Block block = Block.of(BlockType.I, 0, 0).withItem(ItemType.LINE_CLEAR, 1, 0);
+
+            Block rotated = block.rotated();
+
+            assertEquals(ItemType.LINE_CLEAR.code(), rotated.codeAt(0, 2));
+            assertEquals(0, rotated.itemRow());
+            assertEquals(2, rotated.itemCol());
+            assertEquals(block, rotated.rotatedCounterClockwise());
+        }
+
+        @Test
+        @DisplayName("O형에 붙은 아이템도 회전하면 옆 칸으로 옮겨간다")
+        void itemMovesOnOBlock() {
+            // 모양은 그대로지만 블럭은 돌았으므로 붙은 칸이 왼쪽 위(0, 1)에서 오른쪽 위(0, 2)로 간다
+            Block block = Block.of(BlockType.O, 0, 0).withItem(ItemType.LINE_CLEAR, 0, 1);
+
+            Block rotated = block.rotated();
+
+            assertEquals(ItemType.LINE_CLEAR.code(), rotated.codeAt(0, 2));
+            assertEquals(BlockType.O.code(), rotated.codeAt(0, 1));
+        }
+
+        @Test
+        @DisplayName("네 번 회전하면 붙은 칸이 처음 자리로 돌아온다")
+        void itemReturnsAfterFullTurn() {
+            Block block = Block.of(BlockType.T, 0, 0).withItem(ItemType.DOUBLE_OR_NOTHING, 0, 1);
+
+            assertEquals(block, block.rotated().rotated().rotated().rotated());
+        }
+
+        @Test
+        @DisplayName("이동해도 붙은 칸은 그대로다")
+        void itemStaysWhenMoved() {
+            Block block = Block.of(BlockType.S, 0, 0).withItem(ItemType.LINE_CLEAR, 0, 1);
+
+            Block moved = block.moved(3, 2);
+
+            assertEquals(ItemType.LINE_CLEAR.code(), moved.codeAt(0, 1));
+        }
+
+        @Test
+        @DisplayName("일반 블럭은 아이템이 없다")
+        void plainBlockHasNoItem() {
+            Block block = Block.of(BlockType.T, 0, 0);
+
+            assertNull(block.item());
+            assertEquals(-1, block.itemRow());
+            assertEquals(-1, block.itemCol());
+        }
+
+        @Test
+        @DisplayName("붙일 수 없는 경우에는 예외를 던진다")
+        void rejectsInvalidAttachment() {
+            Block block = Block.of(BlockType.I, 0, 0);
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> block.withItem(ItemType.LINE_CLEAR, 0, 0));        // 빈 칸
+            assertThrows(IllegalArgumentException.class,
+                    () -> block.withItem(ItemType.WEIGHT, 1, 0));            // 독립형 아이템
+            assertThrows(IllegalArgumentException.class,
+                    () -> block.withItem(ItemType.LINE_CLEAR, 1, 0)
+                            .withItem(ItemType.DOUBLE_OR_NOTHING, 1, 1));    // 이미 붙어 있음
+            assertThrows(NullPointerException.class,
+                    () -> block.withItem(null, 1, 0));
+        }
+    }
+
+    @Nested
+    @DisplayName("독립형 아이템")
+    class StandaloneItem {
+
+        @Test
+        @DisplayName("아이템 모양으로 블럭을 만들고 모든 칸이 아이템 번호다")
+        void createsBlockFromItemShape() {
+            Block block = Block.of(ItemType.CRUSHER, 0, 0);
+
+            assertEquals(ItemType.CRUSHER, block.shape());
+            assertEquals(ItemType.CRUSHER, block.item());
+            assertEquals(ItemType.CRUSHER.code(), block.codeAt(0, 0));
+            assertEquals(CellCode.EMPTY, block.codeAt(0, 3));
+        }
+
+        @Test
+        @DisplayName("테트로미노 종류를 물으면 예외를 던진다")
+        void typeIsNotAvailable() {
+            Block block = Block.of(ItemType.TALL_BOY, 0, 0);
+
+            assertThrows(IllegalStateException.class, block::type);
+        }
+
+        @Test
+        @DisplayName("독립형 아이템에는 다른 아이템을 붙일 수 없다")
+        void cannotAttachToStandalone() {
+            Block block = Block.of(ItemType.WEIGHT, 0, 0);
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> block.withItem(ItemType.LINE_CLEAR, 1, 0));
+        }
+
+        @Test
+        @DisplayName("포함형 아이템으로는 블럭을 만들 수 없다")
+        void embeddedItemCannotBeShape() {
+            assertThrows(IllegalArgumentException.class, () -> Block.of(ItemType.LINE_CLEAR, 0, 0));
         }
     }
 }

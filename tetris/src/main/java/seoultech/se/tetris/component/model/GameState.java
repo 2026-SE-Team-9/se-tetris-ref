@@ -6,8 +6,9 @@ public interface GameState {
     /**
      * 현재 20x10 보드에 고정된 블럭들의 상태 반환.
      *
-     * <p>각 칸의 값은 {@link seoultech.se.tetris.blocks.BlockType#code()}이며,
-     * 빈 칸은 {@link seoultech.se.tetris.blocks.BlockType#EMPTY_CODE}이다.
+     * <p>각 칸의 값은 칸 번호로, 테트로미노 또는 아이템의 번호이며 빈 칸은
+     * {@link seoultech.se.tetris.blocks.CellCode#EMPTY}이다.
+     * 화면은 번호를 직접 비교하지 않고 {@link seoultech.se.tetris.blocks.CellCode}로 종류와 표시 문자를 얻는다.
      */
     int[][] getBoard();
 
