@@ -9,6 +9,7 @@ import java.util.Random;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockFactory;
 import seoultech.se.tetris.blocks.BlockType;
+import seoultech.se.tetris.blocks.ItemFactory;
 import seoultech.se.tetris.component.controller.GameController;
 import seoultech.se.tetris.component.listener.GameEventListener;
 import seoultech.se.tetris.component.model.GameState;
@@ -35,19 +36,26 @@ public class TetrisEngine implements GameState, GameController {
     /** 블럭이 생성되는 열. 4칸 격자를 보드 가운데에 맞춘다. */
     public static final int SPAWN_COL = (Board.WIDTH - BlockType.SIZE) / 2;
 
+    /** 아이템이 생성되는 줄 간격. 10줄마다 하나씩 생성된다. */
+    public static final int ITEM_LINE_INTERVAL = 10;
+
     /* 각 component들의 객체 */
     private final Board board;
     private final BlockFactory blockFactory;
     private final LevelPolicy levelPolicy;
     private final ScoreCalculator scoreCalculator;
+    private final ItemFactory itemFactory;
 
     /** 설정된 게임 난이도 */
     private final Difficulty difficulty;
 
-    /* 다음 블럭을 저장하는 큐 */
-    private final Deque<BlockType> nextQueue = new ArrayDeque<>(NEXT_QUEUE_SIZE);
+    /** 설정된 게임 모드 */
+    private final GameMode mode;
     /** 게임 이벤트를 받을 리스너 목록 */
     private final List<GameEventListener> listeners = new ArrayList<>();
+
+    /** 다음 블럭을 저장하는 큐. 아이템도 담아야 하므로 Block 타입을 사용한다. */
+    private final Deque<Block> nextQueue = new ArrayDeque<>(NEXT_QUEUE_SIZE);
 
     /* 현재 게임 상태 변수 */
     private Block current;
@@ -76,9 +84,14 @@ public class TetrisEngine implements GameState, GameController {
         this(Difficulty.DEFAULT);
     }
 
-    /** 실제 게임용. 지정한 난이도, 블럭의 등장 순서를 랜덤으로 설정한다. */
+    /** 실제 게임용. 일반 모드로, 지정한 난이도와 블럭 등장 순서를 랜덤으로 설정한다. */
     public TetrisEngine(Difficulty difficulty) {
-        this(new BlockFactory(new Random(), difficulty));
+        this(difficulty, GameMode.NORMAL);
+    }
+
+    /** 실제 게임용. 지정한 난이도와 모드, 블럭 등장 순서를 랜덤으로 설정한다. */
+    public TetrisEngine(Difficulty difficulty, GameMode mode) {
+        this(new BlockFactory(new Random(), difficulty), new ItemFactory(new Random()), mode);
     }
 
     /**
@@ -93,14 +106,30 @@ public class TetrisEngine implements GameState, GameController {
     }
 
     /**
+     * 블럭 생성기, 아이템 생성기, 모드를 모두 지정해 만든다.
+     *
+     * <p>두 생성기에 시드를 고정한 {@link Random}을 넘기면 아이템 모드의 진행도 재현된다.
+     */
+    public TetrisEngine(BlockFactory blockFactory, ItemFactory itemFactory, GameMode mode) {
+        this(blockFactory, itemFactory, mode, new Board());
+    }
+
+    /**
      * 테스트용. 미리 채운 보드로 시작한다.
      *
      * <p>줄 삭제·백투백·레벨 상승처럼 무작위 블럭으로는 만들기 어려운 상황을 재현하기 위한 것으로,
      * 같은 패키지의 테스트에서만 사용한다.
      */
     TetrisEngine(BlockFactory blockFactory, Board board) {
+        this(blockFactory, new ItemFactory(new Random()), GameMode.NORMAL, board);
+    }
+
+    /** 테스트용. 지정된 블럭 생성기, 아이템 생성기, 모드, 그리고 보드로 시작한다. */
+    TetrisEngine(BlockFactory blockFactory, ItemFactory itemFactory, GameMode mode, Board board) {
         this.board = Objects.requireNonNull(board, "Board는 null일 수 없습니다.");
         this.blockFactory = Objects.requireNonNull(blockFactory, "BlockFactory는 null일 수 없습니다.");
+        this.itemFactory = Objects.requireNonNull(itemFactory, "ItemFactory는 null일 수 없습니다.");
+        this.mode = Objects.requireNonNull(mode, "GameMode는 null일 수 없습니다.");
         this.difficulty = blockFactory.difficulty();
         this.levelPolicy = new LevelPolicy(difficulty);
         this.scoreCalculator = new ScoreCalculator();
@@ -182,16 +211,16 @@ public class TetrisEngine implements GameState, GameController {
 
     private void fillQueue() {
         while (nextQueue.size() < NEXT_QUEUE_SIZE) {
-            nextQueue.addLast(blockFactory.next());
+            nextQueue.addLast(Block.of(blockFactory.next(), 0, 0));
         }
     }
 
     /** 큐에서 다음 블럭을 꺼내 생성한다. 놓을 자리가 없으면 게임 종료 */
     private void spawnNext() {
-        BlockType type = nextQueue.removeFirst();
+        Block next = nextQueue.removeFirst();
         fillQueue();
 
-        Block spawned = Block.of(type, Board.SPAWN_ROW, SPAWN_COL);
+        Block spawned = next.moved(Board.SPAWN_ROW, SPAWN_COL);
         blocksSpawned++;
 
         if (!board.canPlace(spawned)) {
@@ -263,14 +292,48 @@ public class TetrisEngine implements GameState, GameController {
                 && scoreCalculator.isBackToBackEligible(cleared);
         int gained = scoreCalculator.lineClearScore(cleared, level, backToBack);
 
+        int linesBefore = linesCleared;
         score += gained;
         linesCleared += cleared;
         lastClearWasBackToBackEligible = scoreCalculator.isBackToBackEligible(cleared);
+        if (reachedItemLine(linesBefore, linesCleared)) {
+            scheduleItemBlock();
+        }
 
         fireLinesCleared(cleared, gained);
 
         status = Status.PLAYING;
         spawnNextAndNotify();
+    }
+
+    /**
+     * 이번 줄 삭제로 아이템 등장 기준(10줄 단위)을 새로 넘겼는지 여부. 아이템 모드에서만 참이 될 수 있다.
+     *
+     * <p>여러 줄을 지워 단위를 건너뛴 경우(예: 9줄 → 12줄)도 넘긴 것으로 본다.
+     * 한 번에 지울 수 있는 줄은 최대 4줄이므로 두 단위를 동시에 넘기는 일은 없다.
+     */
+    private boolean reachedItemLine(int before, int after) {
+        return mode == GameMode.ITEM
+                && before / ITEM_LINE_INTERVAL != after / ITEM_LINE_INTERVAL;
+    }
+
+    /**
+     * 다다음 블럭(큐의 두 번째)을 아이템 블럭으로 바꾼다.
+     *
+     * <p>다음 블럭 영역에 이미 보이고 있는 블럭(큐의 첫 번째)은 바꾸지 않는다. (2차 팀 결정)
+     * 그 블럭이 생성되고 나면 다음 블럭 영역에 아이템 블럭이 나타난다.
+     * 포함형 아이템은 원래 다다음 블럭이던 테트로미노에 붙는다.
+     *
+     * <p>아이템은 2차 요구사항 기준으로 다음 호출 때 두 번째 자리는 항상 테트라미노이다.
+     * blockFactory.next()는 실행되지 않는 대비용이며,
+     * 이후 줄 수를 세는 경로가 늘어 생성 전에 두 번 호출되면 예약된 아이템이 바뀔 수 있다.
+     */
+    private void scheduleItemBlock() {
+        Block shown = nextQueue.removeFirst();
+        Block afterNext = nextQueue.removeFirst();
+        BlockType base = afterNext.shape() instanceof BlockType type ? type : blockFactory.next();
+        nextQueue.addFirst(itemFactory.create(base));
+        nextQueue.addFirst(shown);
     }
 
     /**
@@ -468,8 +531,7 @@ public class TetrisEngine implements GameState, GameController {
 
     @Override
     public Block getNextBlock() {
-        BlockType type = nextQueue.peekFirst();
-        return type == null ? null : Block.of(type, 0, 0);
+        return nextQueue.peekFirst();
     }
 
     @Override
@@ -541,6 +603,11 @@ public class TetrisEngine implements GameState, GameController {
     /** 지금까지 생성된 블럭 수. 레벨 계산과 테스트에 쓴다. */
     public int getBlocksSpawned() {
         return blocksSpawned;
+    }
+
+    /** 이 게임의 모드. 점수 기록에 남길 모드로 쓴다. */
+    public GameMode getGameMode() {
+        return mode;
     }
 
     /** 현재 게임 난이도. 점수 기록에도 동일한 난이도를 기록한다. */

@@ -3,6 +3,7 @@ package seoultech.se.tetris.engine;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockType;
 import seoultech.se.tetris.blocks.BlockFactory;
+import seoultech.se.tetris.blocks.ItemFactory;
+import seoultech.se.tetris.blocks.ItemType;
 import seoultech.se.tetris.component.listener.GameEventListener;
 
 @DisplayName("TetrisEngine")
@@ -707,6 +710,109 @@ class TetrisEngineTest {
         }
 
         // --------------------------------------------------------------
+        // 아이템 등장 (아이템 모드)
+        // --------------------------------------------------------------
+
+        /** 항상 같은 아이템을 고르는 생성기. 포함형이면 붙는 칸은 실제 코드대로 고른다. */
+        private ItemFactory alwaysItem(ItemType item) {
+            return new ItemFactory(new Random(0)) {
+                @Override
+                public ItemType nextItem() {
+                    return item;
+                }
+            };
+        }
+
+        /** 8~19행을 세로 I 자리(5열)만 비운 보드. 세로 I 하나마다 4줄씩, 세 개로 12줄을 지운다. */
+        private int[][] twelveLinesReady() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            fillRows(grid, 8, 19, VERTICAL_I_COL);
+            return grid;
+        }
+
+        /** I 블럭만 나오는 아이템 모드 엔진. */
+        private TetrisEngine itemModeEngine(int[][] grid, ItemType item) {
+            TetrisEngine created = new TetrisEngine(always(BlockType.I), alwaysItem(item),
+                    GameMode.ITEM, new Board(grid));
+            events = new RecordingListener();
+            created.addListener(events);
+            return created;
+        }
+
+        @Test
+        @DisplayName("아이템 모드에서 10줄을 넘기면 다다음 블럭이 아이템 블럭이 된다")
+        void itemAppearsAfterTenLines() {
+            TetrisEngine target = itemModeEngine(twelveLinesReady(), ItemType.CRUSHER);
+
+            dropVerticalI(target);          // 4줄
+            dropVerticalI(target);          // 8줄
+            assertNull(target.getNextBlock().item());
+
+            dropVerticalI(target);          // 12줄 → 10줄 단위를 넘김
+
+            assertEquals(12, target.getLinesCleared());
+            assertNull(target.getCurrentBlock().item());
+            assertSame(ItemType.CRUSHER, target.getNextBlock().item());
+        }
+
+        @Test
+        @DisplayName("다음 블럭 영역에 이미 보이던 블럭은 바꾸지 않는다")
+        void keepsBlockAlreadyShown() {
+            TetrisEngine target = itemModeEngine(twelveLinesReady(), ItemType.WEIGHT);
+            dropVerticalI(target);
+            dropVerticalI(target);
+            Block shownBefore = target.getNextBlock();
+
+            dropVerticalI(target);
+
+            assertEquals(shownBefore.moved(Board.SPAWN_ROW, TetrisEngine.SPAWN_COL), target.getCurrentBlock());
+        }
+
+        @Test
+        @DisplayName("포함형 아이템은 원래 다다음 블럭이던 테트로미노에 붙는다")
+        void embeddedItemAttachesToOriginalBlock() {
+            TetrisEngine target = itemModeEngine(twelveLinesReady(), ItemType.LINE_CLEAR);
+
+            dropVerticalI(target);
+            dropVerticalI(target);
+            dropVerticalI(target);
+
+            Block next = target.getNextBlock();
+            assertSame(BlockType.I, next.shape());
+            assertSame(ItemType.LINE_CLEAR, next.item());
+        }
+
+        @Test
+        @DisplayName("아이템 블럭도 생성 위치에서 등장한다")
+        void itemBlockSpawnsAtSpawnPosition() {
+            TetrisEngine target = itemModeEngine(twelveLinesReady(), ItemType.TALL_BOY);
+            dropVerticalI(target);
+            dropVerticalI(target);
+            dropVerticalI(target);          // 12줄을 모두 지워 보드가 빈다
+
+            target.dropToBottom();          // 보이던 블럭을 내려놓으면 아이템 블럭이 생성된다
+
+            Block current = target.getCurrentBlock();
+            assertSame(ItemType.TALL_BOY, current.item());
+            assertEquals(Board.SPAWN_ROW, current.row());
+            assertEquals(TetrisEngine.SPAWN_COL, current.col());
+        }
+
+        @Test
+        @DisplayName("일반 모드에서는 10줄을 넘겨도 아이템이 나오지 않는다")
+        void normalModeHasNoItems() {
+            TetrisEngine target = engineWith(twelveLinesReady());
+
+            dropVerticalI(target);
+            dropVerticalI(target);
+            dropVerticalI(target);
+
+            assertEquals(12, target.getLinesCleared());
+            assertNull(target.getCurrentBlock().item());
+            assertNull(target.getNextBlock().item());
+        }
+
+        // --------------------------------------------------------------
         // 줄 삭제 애니메이션
         // --------------------------------------------------------------
 
@@ -921,6 +1027,53 @@ class TetrisEngineTest {
         void rejectsNullDifficulty() {
             // 생성자가 둘 다 인자 하나라 null만 넘기면 어느 쪽인지 정할 수 없으므로 형을 지정한다
             assertThrows(NullPointerException.class, () -> new TetrisEngine((Difficulty) null));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 모드
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("모드")
+    class Mode {
+
+        @Test
+        @DisplayName("모드를 지정하지 않으면 일반 모드로 시작한다")
+        void defaultsToNormalMode() {
+            assertSame(GameMode.NORMAL, new TetrisEngine().getGameMode());
+            assertSame(GameMode.NORMAL, new TetrisEngine(Difficulty.HARD).getGameMode());
+            assertSame(GameMode.NORMAL, engine.getGameMode());
+        }
+
+        @Test
+        @DisplayName("지정한 난이도와 모드로 시작한다")
+        void usesGivenDifficultyAndMode() {
+            TetrisEngine created = new TetrisEngine(Difficulty.HARD, GameMode.ITEM);
+
+            assertSame(Difficulty.HARD, created.getDifficulty());
+            assertSame(GameMode.ITEM, created.getGameMode());
+        }
+
+        @Test
+        @DisplayName("재시작해도 모드는 바뀌지 않는다")
+        void restartKeepsMode() {
+            TetrisEngine created = new TetrisEngine(new BlockFactory(new Random(SEED)),
+                    new ItemFactory(new Random(SEED)), GameMode.ITEM);
+
+            created.restartGame();
+
+            assertSame(GameMode.ITEM, created.getGameMode());
+        }
+
+        @Test
+        @DisplayName("모드나 아이템 생성기가 null이면 예외가 발생한다")
+        void rejectsNull() {
+            BlockFactory blocks = new BlockFactory(new Random(SEED));
+            ItemFactory items = new ItemFactory(new Random(SEED));
+
+            assertThrows(NullPointerException.class, () -> new TetrisEngine(blocks, items, null));
+            assertThrows(NullPointerException.class, () -> new TetrisEngine(blocks, null, GameMode.ITEM));
         }
     }
 
