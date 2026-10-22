@@ -66,8 +66,8 @@ public class TetrisEngine implements GameState, GameController {
     private boolean lastClearWasBackToBackEligible;
     private Status status;
 
-    /** 애니메이션이 끝나면 지울 줄. 애니메이션 중이 아니면 비어 있다. */
-    private List<Integer> clearingRows = List.of();
+    /** 애니메이션이 끝나면 적용할 계획. 애니메이션 중이 아니면 {@code null}. */
+    private ClearPlan pendingPlan;
 
     /**
      * 게임의 상태. 진행중, 일시정지, 줄 삭제 애니메이션, 종료 상태를 나타낸다.
@@ -202,7 +202,7 @@ public class TetrisEngine implements GameState, GameController {
         blocksSpawned = 0;
         level = LevelPolicy.INITIAL_LEVEL;
         lastClearWasBackToBackEligible = false;
-        clearingRows = List.of();
+        pendingPlan = null;
         status = Status.PLAYING;
 
         fillQueue();
@@ -243,54 +243,85 @@ public class TetrisEngine implements GameState, GameController {
     }
 
     /**
-     * 현재 블럭을 보드에 고정한다.
+     * 현재 블럭을 고정한다.
      *
-     * <p>가득 찬 줄이 있으면 바로 지우지 않고 줄 삭제 애니메이션을 시작한다.
-     * 줄 삭제와 점수 처리, 다음 블럭 생성은 애니메이션이 끝나는 {@link #finishClearing()}에서 한다.
-     * 가득 찬 줄이 없으면 바로 다음 블럭을 생성한다.
+     * <p>블럭의 아이템 효과(아이템이 없으면 일반 블럭의 동작)가 무엇을 지울지 계획을 세우고,
+     * 지울 칸이 있으면 애니메이션을 거쳐 {@link #finishClearing()}에서, 없으면 바로 계획을 적용한다.
+     * 줄 삭제와 점수 처리, 다음 블럭 생성은 계획을 적용한 뒤에 한다.
      */
     private void lockCurrentBlock() {
-        board.place(current);
-
-        List<Integer> fullRows = board.fullRows();
-        if (!fullRows.isEmpty()) {
-            startClearing(fullRows);
-            return;
-        }
-        spawnNextAndNotify();
+        LockContext context = new LockContext(board, current);
+        ItemEffects.of(current.item()).onLock(context);
+        runPlan(context.plan());
     }
 
-    /** 줄 삭제 애니메이션을 시작한다. 지울 줄을 보관하고 입력을 막는다. */
-    private void startClearing(List<Integer> rows) {
-        clearingRows = List.copyOf(rows);
-        status = Status.CLEARING;
-        fireBoardUpdated();
-        fireClearingStarted();
+    /** 지울 칸이 있으면 애니메이션을 시작하고, 없으면 바로 적용하고 이어간다. */
+    private void runPlan(ClearPlan plan) {
+        if (plan.hasRemoval()) {
+            pendingPlan = plan;
+            status = Status.CLEARING;
+            fireBoardUpdated();
+            fireClearingStarted();
+            return;
+        }
+        applyPlan(plan);
+        continueAfter(plan);
     }
 
     /**
-     * 줄 삭제 애니메이션을 마치고, 보관한 줄을 지운 뒤 점수를 계산하고 다음 블럭을 생성한다.
+     * {@inheritDoc}
      *
-     * <p>백투백 조건은 직전 줄 삭제와 이번 줄 삭제가 모두 백투백 조건을 만족하는 것
-     * <p>백투백은 조건을 연속으로 만족하는 경우 계속 이어질 수 있다.
-     * 백투백 조건이 되는 줄 수 미만의 줄을 삭제하면 연속 백투백이 끊긴다.
-     * 줄을 삭제하지 않는 동작은 백투백 조건에 영향이 없다.
-     *
-     * <p>애니메이션 중이 아니면(중단·재시작으로 이미 끝난 경우 포함) 아무 일도 하지 않는다.
+     * <p>보관한 계획을 적용한 뒤, 아이템 효과로 줄이 채워졌으면 일반 줄 삭제를 이어서 하고 아니면 다음 블럭을 생성한다.
+     * 애니메이션 중이 아니면(중단·재시작으로 이미 끝난 경우 포함) 아무 일도 하지 않는다.
      */
     @Override
     public void finishClearing() {
         if (status != Status.CLEARING) {
             return;
         }
+        ClearPlan plan = pendingPlan;
+        pendingPlan = null;
+        applyPlan(plan);
+        status = Status.PLAYING;
+        continueAfter(plan);
+    }
 
-        int cleared = clearingRows.size();
-        board.removeRows(clearingRows);
-        clearingRows = List.of();
+    /** 계획대로 보드를 바꾸고 점수를 반영한다. */
+    private void applyPlan(ClearPlan plan) {
+        if (plan.isLineClear()) {
+            applyLineClear(plan);
+        }
+        for (int[] cell : plan.removedCells()) {
+            board.clearCell(cell[0], cell[1]);
+        }
+        for (int[] column : plan.dropColumns()) {
+            board.dropAbove(column[0], column[1]);
+        }
+        board.removeRows(plan.crushedRows());
+        if (plan.placeAfterRemoval() != null) {
+            board.place(plan.placeAfterRemoval());
+        }
+        score += scoreCalculator.itemScore(plan.itemScoreCells(), level);
+    }
+
+    /**
+     * 줄 삭제를 적용하고 점수·지운 줄 수·백투백·아이템 등장을 반영한다.
+     *
+     * <p>점수는 지운 줄 수와 레벨로 계산한 뒤, 꽉 찬 줄에 Double or Nothing이 있으면 배수를 곱한다.
+     * 줄 삭제 아이템(L)으로 지운 줄도 지운 줄 수와 10줄 카운트에 포함한다.
+     *
+     * <p>백투백은 직전 줄 삭제와 이번 줄 삭제가 모두 백투백 조건(4줄 동시 삭제)을 만족할 때 적용되며,
+     * 연속으로 만족하는 동안 계속 이어진다. 조건 미만의 줄을 지우면 끊기고, 줄을 지우지 않는 동작은 영향이 없다.
+     * 무게추·Tall Boy·Crusher의 효과는 줄 삭제가 아니므로 백투백에 영향을 주지 않는다.
+     */
+    private void applyLineClear(ClearPlan plan) {
+        int cleared = plan.lineRows().size();
+        board.removeRows(plan.lineRows());
 
         boolean backToBack = lastClearWasBackToBackEligible
                 && scoreCalculator.isBackToBackEligible(cleared);
-        int gained = scoreCalculator.lineClearScore(cleared, level, backToBack);
+        int gained = scoreCalculator.lineClearScore(cleared, level, backToBack)
+                * plan.lineScoreMultiplier();
 
         int linesBefore = linesCleared;
         score += gained;
@@ -299,10 +330,20 @@ public class TetrisEngine implements GameState, GameController {
         if (reachedItemLine(linesBefore, linesCleared)) {
             scheduleItemBlock();
         }
-
         fireLinesCleared(cleared, gained);
+    }
 
-        status = Status.PLAYING;
+    /** 줄 삭제였으면 다음 블럭, 아이템 효과였으면 꽉 찬 줄을 다시 확인해 일반 줄 삭제로 처리한다. */
+    private void continueAfter(ClearPlan plan) {
+        if (!plan.isLineClear()) {
+            List<Integer> fullRows = board.fullRows();
+            if (!fullRows.isEmpty()) {
+                ClearPlan lineClear = new ClearPlan();
+                lineClear.setLineClear(board, fullRows);
+                runPlan(lineClear);
+                return;
+            }
+        }
         spawnNextAndNotify();
     }
 
@@ -324,8 +365,9 @@ public class TetrisEngine implements GameState, GameController {
      * 그 블럭이 생성되고 나면 다음 블럭 영역에 아이템 블럭이 나타난다.
      * 포함형 아이템은 원래 다다음 블럭이던 테트로미노에 붙는다.
      *
-     * <p>아이템은 2차 요구사항 기준으로 다음 호출 때 두 번째 자리는 항상 테트라미노이다.
-     * blockFactory.next()는 실행되지 않는 대비용이며,
+     * <p>아이템은 이 메서드만 두 번째 자리에 넣는다. 이 메서드를 부르는 {@link #applyLineClear}는
+     * 블럭 하나를 고정할 때 최대 한 번 실행되고 그 뒤에 반드시 블럭이 하나 생성되므로,
+     * 다음 호출 때 두 번째 자리는 항상 테트라미노다. {@code blockFactory.next()}는 실행되지 않는 대비용이며,
      * 이후 줄 수를 세는 경로가 늘어 생성 전에 두 번 호출되면 예약된 아이템이 바뀔 수 있다.
      */
     private void scheduleItemBlock() {
@@ -371,16 +413,22 @@ public class TetrisEngine implements GameState, GameController {
 
     @Override
     public void moveLeft() {
-        if (isPlayable()) {
+        if (isPlayable() && canSlide()) {
             tryMoveTo(current.moved(0, -1));
         }
     }
 
     @Override
     public void moveRight() {
-        if (isPlayable()) {
+        if (isPlayable() && canSlide()) {
             tryMoveTo(current.moved(0, 1));
         }
+    }
+
+    /** 좌우로 움직일 수 있는지. 무게추처럼 닿은 뒤 좌우 이동을 막는 아이템은 바닥이나 블럭에 닿으면 막힌다. */
+    private boolean canSlide() {
+        return ItemEffects.of(current.item()).canSlideWhenLanded()
+                || board.canPlace(current.moved(1, 0));
     }
 
     /**
@@ -591,13 +639,21 @@ public class TetrisEngine implements GameState, GameController {
         if (status != Status.CLEARING) {
             return cells;
         }
-        for (int row : clearingRows) {
-            int visibleRow = row - Board.BUFFER_HEIGHT;
-            if (visibleRow >= 0) {
-                java.util.Arrays.fill(cells[visibleRow], true);
-            }
+        boolean[][] planned = pendingPlan.cellsToClear();
+        for (int r = 0; r < Board.VISIBLE_HEIGHT; r++) {
+            System.arraycopy(planned[r + Board.BUFFER_HEIGHT], 0, cells[r], 0, Board.WIDTH);
         }
         return cells;
+    }
+
+    /**
+     * 테스트용. 현재 블럭을 지정한 블럭으로 바꾼다.
+     *
+     * <p>아이템 효과는 아이템 블럭이 현재 블럭일 때만 확인할 수 있는데, 무작위 등장을 기다리지 않고
+     * 원하는 위치에서 바로 시험하기 위한 것이다. 같은 패키지의 테스트에서만 사용한다.
+     */
+    void replaceCurrentBlock(Block block) {
+        current = Objects.requireNonNull(block, "블럭은 null일 수 없습니다.");
     }
 
     /** 지금까지 생성된 블럭 수. 레벨 계산과 테스트에 쓴다. */
