@@ -159,4 +159,30 @@ class ScoreCalculatorTest {
                     () -> calculator.lineClearScore(1, 0, false));
         }
     }
+
+    @Nested
+    @DisplayName("itemScore()")
+    class ItemScore {
+
+        @Test
+        @DisplayName("칸당 10점에 레벨 배율을 적용한다")
+        void tenPointsPerCellTimesLevel() {
+            assertEquals(40, calculator.itemScore(4, 1));
+            assertEquals(250, calculator.itemScore(25, 1));
+            assertEquals(120, calculator.itemScore(4, 3));
+        }
+
+        @Test
+        @DisplayName("0칸이면 0점이다")
+        void zeroCells() {
+            assertEquals(0, calculator.itemScore(0, 5));
+        }
+
+        @Test
+        @DisplayName("음수 칸이나 잘못된 레벨이면 예외를 던진다")
+        void rejectsInvalidArguments() {
+            assertThrows(IllegalArgumentException.class, () -> calculator.itemScore(-1, 1));
+            assertThrows(IllegalArgumentException.class, () -> calculator.itemScore(1, 0));
+        }
+    }
 }

@@ -33,6 +33,9 @@ public class ScoreCalculator {
     /** 백투백 판정 대상이 되는 줄 수. 이 수만큼 동시에 지워야 한다. */
     public static final int BACK_TO_BACK_LINES = 4;
 
+    /** 아이템이 지운 칸 하나의 점수 */
+    public static final int ITEM_SCORE_PER_CELL = 10;
+
     /**
      * 블럭이 아래로 내려간 거리에 대한 점수.
      *
@@ -66,6 +69,14 @@ public class ScoreCalculator {
             score *= BACK_TO_BACK_MULTIPLIER;
         }
         return score;
+    }
+
+    /** 아이템이 칸을 지웠을 때의 점수. 칸당 10점에 레벨 배율을 적용한다. */
+    public int itemScore(int cells, int level) {
+        requireNotNegative(cells, "칸 수");
+        requireValidLevel(level);
+
+        return ITEM_SCORE_PER_CELL * cells * level;
     }
 
     /** 해당 줄 수가 백투백 판정 대상인지 여부 */
