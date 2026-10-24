@@ -87,9 +87,13 @@ class GamePanelTest {
     private static final int CELL = 28;
     private static final int MARGIN = 24;
 
-    /** 보이는 보드의 (행, 열) 칸 가운데 픽셀의 색 */
+    /**
+     * 보이는 보드의 (행, 열) 칸의 왼쪽 위 모서리 근처 픽셀의 색.
+     *
+     * <p>칸 가운데는 문자가 그려지는 자리이고, 문자색은 바탕에 따라 흰색일 수 있으므로 피한다.
+     */
     private static int pixelAt(BufferedImage image, int row, int col) {
-        return image.getRGB(MARGIN + col * CELL + CELL / 2, MARGIN + row * CELL + CELL / 2) & 0xFFFFFF;
+        return image.getRGB(MARGIN + col * CELL + 2, MARGIN + row * CELL + 2) & 0xFFFFFF;
     }
 
     private static BufferedImage render(GameState state) {
