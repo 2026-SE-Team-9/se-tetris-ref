@@ -21,11 +21,7 @@ class GamePanelGhostTest {
     private static final int MARGIN = 24;
 
     private static BufferedImage render(GameState state) {
-        return render(state, false);
-    }
-
-    private static BufferedImage render(GameState state, boolean colorBlind) {
-        GamePanel panel = new GamePanel(state, 1.0, colorBlind);
+        GamePanel panel = new GamePanel(state);
         Dimension size = panel.getPreferredSize();
         panel.setSize(size);
         BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB);
@@ -105,21 +101,6 @@ class GamePanelGhostTest {
         assertEquals(BlockPalette.colorOf(BlockType.O).getRGB() & 0xFFFFFF,
                 pixel(image, 18, 4, 2, 2));
         assertEquals(0, textPixels(image, 18, 4));
-    }
-
-    @Test
-    void 색맹_모드에서도_고스트_모양과_밝기는_같다() {
-        StubState state = new StubState(Block.of(BlockType.O, 0, 3), 10, false, false);
-        BufferedImage normal = render(state, false);
-        BufferedImage colorBlind = render(state, true);
-
-        // 고스트 칸의 모든 픽셀이 기본 모드와 같고, 실제 블럭 색만 팔레트에 따라 달라진다.
-        for (int y = 0; y < CELL; y++) {
-            for (int x = 0; x < CELL; x++) {
-                assertEquals(pixel(normal, 10, 4, x, y), pixel(colorBlind, 10, 4, x, y));
-            }
-        }
-        assertNotEquals(pixel(normal, 0, 4, 2, 2), pixel(colorBlind, 0, 4, 2, 2));
     }
 
     private record StubState(Block current, int ghostY, boolean clearing, boolean gameOver) implements GameState {
