@@ -283,6 +283,103 @@ class BoardTest {
     }
 
     // ------------------------------------------------------------------
+    // clearCell
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("clearCell()")
+    class ClearCell {
+
+        @Test
+        @DisplayName("지정한 칸만 비우고 위의 칸은 내려오지 않는다")
+        void clearsOnlyThatCell() {
+            Board board = boardWithBottomRows(
+                    "X.........",
+                    "XX........"
+            );
+
+            board.clearCell(Board.HEIGHT - 1, 0);
+
+            assertEquals(".X........", rowOf(board, Board.HEIGHT - 1));
+            assertEquals("X.........", rowOf(board, Board.HEIGHT - 2));
+        }
+
+        @Test
+        @DisplayName("보드 범위를 벗어난 칸이면 예외를 던진다")
+        void rejectsCellOutOfRange() {
+            Board board = new Board();
+
+            assertThrows(IllegalArgumentException.class, () -> board.clearCell(Board.HEIGHT, 0));
+            assertThrows(IllegalArgumentException.class, () -> board.clearCell(0, -1));
+        }
+    }
+
+    @Nested
+    @DisplayName("dropAbove()")
+    class DropAbove {
+
+        /** 0열의 14~19행을 위에서부터 채운 보드. 'X'는 채운 칸, '.'은 빈 칸이다. */
+        private Board boardWithColumn(String topToBottom) {
+            String[] rows = new String[topToBottom.length()];
+            for (int i = 0; i < rows.length; i++) {
+                rows[i] = topToBottom.charAt(i) + ".........";
+            }
+            return boardWithBottomRows(rows);
+        }
+
+        /** 지정한 열을 위에서 아래로 읽은 문자열 (14~19행). */
+        private String column(Board board, int col) {
+            StringBuilder sb = new StringBuilder();
+            for (int r = Board.HEIGHT - 6; r < Board.HEIGHT; r++) {
+                sb.append(board.isEmpty(r, col) ? '.' : 'X');
+            }
+            return sb.toString();
+        }
+
+        @Test
+        @DisplayName("위쪽 칸들을 아래가 막힐 때까지 한 덩어리로 내린다")
+        void dropsUntilSupported() {
+            Board board = boardWithColumn("XX...X");
+
+            board.dropAbove(0, 16);
+
+            assertEquals("...XXX", column(board, 0));
+        }
+
+        @Test
+        @DisplayName("덩어리 안의 빈 칸은 그대로 유지한다")
+        void keepsHolesInside() {
+            Board board = boardWithColumn("X.X...");
+
+            board.dropAbove(0, 17);
+
+            assertEquals("...X.X", column(board, 0));
+        }
+
+        @Test
+        @DisplayName("바로 아래가 막혀 있거나 위에 칸이 없으면 바뀌지 않는다")
+        void noChangeWhenSupportedOrEmpty() {
+            Board supported = boardWithColumn("XX....");
+            Board empty = boardWithColumn(".....X");
+
+            supported.dropAbove(0, 15);
+            empty.dropAbove(0, 16);
+
+            assertEquals("XX....", column(supported, 0));
+            assertEquals(".....X", column(empty, 0));
+        }
+
+        @Test
+        @DisplayName("범위를 벗어나면 예외를 던진다")
+        void rejectsOutOfRange() {
+            Board board = new Board();
+
+            assertThrows(IllegalArgumentException.class, () -> board.dropAbove(Board.WIDTH, 0));
+            assertThrows(IllegalArgumentException.class, () -> board.dropAbove(0, Board.HEIGHT + 1));
+        }
+    }
+
+    // ------------------------------------------------------------------
     // fullRows / removeRows
     // ------------------------------------------------------------------
 

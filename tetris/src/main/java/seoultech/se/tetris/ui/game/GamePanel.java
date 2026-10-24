@@ -28,6 +28,9 @@ public class GamePanel extends JPanel {
     private static final int BASE_MINI_CELL = 22;
     private static final Color GRID = new Color(40, 40, 40);
 
+    /** 줄 삭제 애니메이션에서 지워질 칸을 칠하는 색 */
+    static final Color FLASH_COLOR = Color.WHITE;
+
     private final transient GameState state;
     private double scale;
     private int cell;
@@ -105,17 +108,26 @@ public class GamePanel extends JPanel {
         }
 
         int[][] grid = state.getBoard();
+        boolean[][] clearing = state.getClearingCells();
         int offset = Board.HEIGHT - Board.VISIBLE_HEIGHT;
         for (int r = offset; r < Board.HEIGHT; r++) {
             for (int c = 0; c < Board.WIDTH; c++) {
-                if (!CellCode.isEmpty(grid[r][c])) {
-                    drawCell(g2, margin + c * cell, margin + (r - offset) * cell, grid[r][c], cell);
+                if (CellCode.isEmpty(grid[r][c])) {
+                    continue;
+                }
+                int x = margin + c * cell;
+                int y = margin + (r - offset) * cell;
+                if (isFlashing(clearing, r - offset, c)) {
+                    drawFlashCell(g2, x, y);
+                } else {
+                    drawCell(g2, x, y, grid[r][c], cell);
                 }
             }
         }
 
+        // 줄 삭제 애니메이션 중에는 현재 블럭이 이미 보드에 고정되어 있으므로 다시 그리지 않는다.
         Block current = state.getCurrentBlock();
-        if (current != null && !state.isGameOver()) {
+        if (current != null && !state.isGameOver() && !state.isClearing()) {
             for (int r = 0; r < BlockType.SIZE; r++) {
                 for (int c = 0; c < BlockType.SIZE; c++) {
                     int row = current.boardRow(r) - offset;
@@ -160,6 +172,23 @@ public class GamePanel extends JPanel {
         g2.setColor(Color.WHITE);
         g2.drawString(value, sideX, y + scaled(26));
         return y + scaled(66);
+    }
+
+    /**
+     * 보이는 보드의 (행, 열)이 줄 삭제 애니메이션으로 지워질 칸인지 판단한다.
+     *
+     * @param clearing {@link GameState#getClearingCells()}의 값
+     * @param visibleRow 보이는 보드 기준 행 (맨 위가 0)
+     */
+    static boolean isFlashing(boolean[][] clearing, int visibleRow, int col) {
+        return visibleRow >= 0 && visibleRow < clearing.length
+                && col >= 0 && col < clearing[visibleRow].length
+                && clearing[visibleRow][col];
+    }
+
+    private void drawFlashCell(Graphics2D g2, int x, int y) {
+        g2.setColor(FLASH_COLOR);
+        g2.fillRect(x + 1, y + 1, cell - 2, cell - 2);
     }
 
     /** 칸 번호의 색과 문자로 칸 하나를 그린다. 테트로미노 칸과 아이템 칸 모두 같은 방식이다. */

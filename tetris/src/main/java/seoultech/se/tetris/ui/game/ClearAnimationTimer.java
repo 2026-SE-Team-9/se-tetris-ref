@@ -18,7 +18,8 @@ public final class ClearAnimationTimer implements GameEventListener {
     /**
      * 애니메이션 길이(ms). 난이도·레벨과 관계없이 같다.
      *
-     * <p>아직 정해지지 않은 임시 값이다. 화면에 애니메이션을 표시하는 작업에서 시각화 담당이 결정한다.
+     * <p>지워질 칸이 하얗게 보이는 시간이다. 연속으로 줄을 지울 때 진행이 답답하지 않고
+     * 반짝임을 알아볼 수 있도록 300ms로 정했다.
      */
     public static final int DURATION_MS = 300;
 
