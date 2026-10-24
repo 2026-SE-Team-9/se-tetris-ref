@@ -42,6 +42,7 @@ import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
 import seoultech.se.tetris.engine.Difficulty;
 import seoultech.se.tetris.score.ScoreRepository;
+import seoultech.se.tetris.ui.DifficultyLabels;
 
 /** 시작 메뉴와 일시정지 화면에서 재사용할 수 있는 설정 화면. */
 public final class SettingsPanel extends JPanel {
@@ -260,11 +261,7 @@ public final class SettingsPanel extends JPanel {
                         Object value, int index, boolean selected, boolean focused) {
                     super.getListCellRendererComponent(list, value, index, selected, focused);
                     if (value instanceof Difficulty selectedDifficulty) {
-                        setText(switch (selectedDifficulty) {
-                            case EASY -> "쉬움";
-                            case NORMAL -> "중간";
-                            case HARD -> "어려움";
-                        });
+                        setText(DifficultyLabels.of(selectedDifficulty));
                     }
                     setOpaque(true);
                     setBackground(index >= 0 && selected ? Color.CYAN : SURFACE);

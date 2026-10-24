@@ -7,13 +7,19 @@ import java.awt.Graphics2D;
 import java.util.List;
 
 import seoultech.se.tetris.score.ScoreRecord;
+import seoultech.se.tetris.ui.DifficultyLabels;
 
-/** 순위·이름·점수 표를 그린다. 종료 화면과 시작 메뉴의 스코어보드가 같은 표를 쓴다. */
+/** 순위·이름·난이도·점수 표를 그린다. 종료 화면과 시작 메뉴의 스코어보드가 같은 표를 쓴다. */
 public final class ScoreboardTablePainter {
 
-    private static final int RANK_X = 60;
-    private static final int NAME_X = 150;
-    private static final int SCORE_X = 400;
+    /**
+     * 열의 위치(px). 이름은 최대 12자, 점수는 여덟 자리까지 겹치지 않는 폭으로 나눈다.
+     * 순위·이름·난이도는 왼쪽 끝, 점수는 오른쪽 끝을 기준으로 맞춘다.
+     */
+    static final int RANK_X = 40;
+    static final int NAME_X = 90;
+    static final int DIFFICULTY_X = 300;
+    static final int SCORE_X = 440;
 
     /** 표 한 행의 높이 */
     public static final int ROW_HEIGHT = 24;
@@ -35,6 +41,7 @@ public final class ScoreboardTablePainter {
         g2.setColor(Color.GRAY);
         g2.drawString("순위", RANK_X, headerY);
         g2.drawString("이름", NAME_X, headerY);
+        g2.drawString("난이도", DIFFICULTY_X, headerY);
         drawRight(g2, "점수", SCORE_X, headerY);
 
         if (records.isEmpty()) {
@@ -52,6 +59,7 @@ public final class ScoreboardTablePainter {
             g2.setColor(i + 1 == highlightedRank ? Color.YELLOW : Color.WHITE);
             g2.drawString(String.valueOf(i + 1), RANK_X, y);
             g2.drawString(record.playerName(), NAME_X, y);
+            g2.drawString(DifficultyLabels.of(record.difficulty()), DIFFICULTY_X, y);
             drawRight(g2, String.valueOf(record.score()), SCORE_X, y);
         }
     }
