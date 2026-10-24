@@ -27,6 +27,8 @@ public class GamePanel extends JPanel {
     private static final int BASE_SIDE_W = 150;
     private static final int BASE_MINI_CELL = 22;
     private static final Color GRID = new Color(40, 40, 40);
+    private static final Color GHOST_FILL = new Color(160, 160, 160, 55);
+    private static final Color GHOST_TEXT = new Color(170, 170, 170);
 
     /** 줄 삭제 애니메이션에서 지워질 칸을 칠하는 색 */
     static final Color FLASH_COLOR = Color.WHITE;
@@ -148,6 +150,10 @@ public class GamePanel extends JPanel {
         // 줄 삭제 애니메이션 중에는 현재 블럭이 이미 보드에 고정되어 있으므로 다시 그리지 않는다.
         Block current = state.getCurrentBlock();
         if (current != null && !state.isGameOver() && !state.isClearing()) {
+            Block ghost = current.moved(state.getGhostY() - current.row(), 0);
+            if (ghost.row() != current.row()) {
+                drawGhost(g2, ghost, offset);
+            }
             for (int r = 0; r < BlockType.SIZE; r++) {
                 for (int c = 0; c < BlockType.SIZE; c++) {
                     int row = current.boardRow(r) - offset;
@@ -160,6 +166,30 @@ public class GamePanel extends JPanel {
         }
         g2.setColor(Color.WHITE);
         g2.drawRect(margin - 1, margin - 1, boardW + 1, boardH + 1);
+    }
+
+    /** 실제 블럭 아래에 착지 예상 위치를 흐린 # 문자로 그린다. */
+    private void drawGhost(Graphics2D g2, Block ghost, int offset) {
+        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, cell * 5 / 8));
+        FontMetrics fm = g2.getFontMetrics();
+        for (int r = 0; r < BlockType.SIZE; r++) {
+            for (int c = 0; c < BlockType.SIZE; c++) {
+                if (!ghost.isFilled(r, c)) {
+                    continue;
+                }
+                int row = ghost.boardRow(r) - offset;
+                if (row < 0 || row >= Board.VISIBLE_HEIGHT) {
+                    continue;
+                }
+                int x = margin + ghost.boardCol(c) * cell;
+                int y = margin + row * cell;
+                g2.setColor(GHOST_FILL);
+                g2.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+                g2.setColor(GHOST_TEXT);
+                g2.drawString("#", x + (cell - fm.stringWidth("#")) / 2,
+                        y + (cell + fm.getAscent() - fm.getDescent()) / 2);
+            }
+        }
     }
 
     private void drawSidePanel(Graphics2D g2) {
