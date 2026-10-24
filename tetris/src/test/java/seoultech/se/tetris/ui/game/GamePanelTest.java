@@ -218,7 +218,7 @@ class GamePanelTest {
         @Override public int getLinesCleared() { return 0; }
         @Override public boolean isPaused() { return false; }
         @Override public boolean isGameOver() { return false; }
-        @Override public int getGhostY() { return 0; }
+        @Override public int getGhostY() { return current == null ? 0 : current.row(); }
         @Override public boolean isClearing() { return clearing; }
         @Override public boolean[][] getClearingCells() { return clearingCells; }
     }
