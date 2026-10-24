@@ -35,7 +35,7 @@ class GamePanelGhostTest {
 
     private static int textPixels(BufferedImage image, int row, int col) {
         int count = 0;
-        int gray = 0xAAAAAA;
+        int gray = 0xC8C8C8;
         for (int y = 2; y < CELL - 2; y++) {
             for (int x = 2; x < CELL - 2; x++) {
                 if (pixel(image, row, col, x, y) == gray) {

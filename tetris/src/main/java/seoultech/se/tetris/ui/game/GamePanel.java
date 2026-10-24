@@ -27,8 +27,8 @@ public class GamePanel extends JPanel {
     private static final int BASE_SIDE_W = 150;
     private static final int BASE_MINI_CELL = 22;
     private static final Color GRID = new Color(40, 40, 40);
-    private static final Color GHOST_FILL = new Color(160, 160, 160, 55);
-    private static final Color GHOST_TEXT = new Color(170, 170, 170);
+    private static final Color GHOST_FILL = new Color(180, 180, 180, 90);
+    private static final Color GHOST_TEXT = new Color(200, 200, 200);
 
     /** 줄 삭제 애니메이션에서 지워질 칸을 칠하는 색 */
     static final Color FLASH_COLOR = Color.WHITE;
