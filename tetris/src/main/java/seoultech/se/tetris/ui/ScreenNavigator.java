@@ -1,11 +1,13 @@
 package seoultech.se.tetris.ui;
 
+import seoultech.se.tetris.engine.GameMode;
+
 public interface ScreenNavigator {
     /** 시작 메뉴 화면으로 이동 */
     void navigateToMenu();
 
-    /** 게임 시작 (인게임 화면으로 전환) */
-    void navigateToGame();
+    /** 선택한 모드로 게임 시작 (인게임 화면으로 전환). 게임 종료 후의 점수 기록도 이 모드로 남는다. */
+    void navigateToGame(GameMode mode);
 
     /** 설정 화면으로 이동 */
     void navigateToSettings();
