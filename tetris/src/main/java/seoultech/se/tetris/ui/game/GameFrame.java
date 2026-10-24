@@ -10,6 +10,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import seoultech.se.tetris.component.listener.GameEventListener;
+import seoultech.se.tetris.config.AppSettings;
 import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
 import seoultech.se.tetris.engine.Difficulty;
@@ -76,7 +77,8 @@ public class GameFrame extends JFrame {
     public static GameFrame launch(Difficulty difficulty, GameMode mode, IntConsumer onGameOver,
             Runnable onReturnToTitle) {
         TetrisEngine engine = new TetrisEngine(difficulty, mode);
-        GamePanel panel = new GamePanel(engine, savedScale());
+        AppSettings saved = savedSettings();
+        GamePanel panel = new GamePanel(engine, saved.screenSize().scale(), saved.colorBlind());
         GameFrame frame = new GameFrame(panel);
 
         GameProgressTimer timer = new GameProgressTimer(engine, engine);
@@ -115,8 +117,9 @@ public class GameFrame extends JFrame {
             loadOrKeep(settings);
             SettingsPanel settingsPanel = new SettingsPanel(settings, keyConfig, new CsvScoreRepository(),
                     SettingsPanel.Context.IN_GAME, input::applyKeyBindings, () -> {
-                        // 저장했다면 바뀐 화면 크기를 반영하고, 취소했다면 그대로 둔다.
+                        // 저장했다면 바뀐 화면 크기와 색맹 모드를 반영하고, 취소했다면 그대로 둔다.
                         panel.setScale(settings.current().screenSize().scale());
+                        panel.setColorBlind(settings.current().colorBlind());
                         frame.setContentPane(panel);
                         frame.pack();
                         frame.setLocationRelativeTo(null);
@@ -160,11 +163,11 @@ public class GameFrame extends JFrame {
         return frame;
     }
 
-    /** 저장된 화면 크기의 배율. 설정을 읽을 수 없으면 기본 크기로 연다. */
-    private static double savedScale() {
+    /** 저장된 설정(화면 크기, 색맹 모드). 설정을 읽을 수 없으면 기본 설정으로 연다. */
+    private static AppSettings savedSettings() {
         PropertiesAppSettingsService settings = new PropertiesAppSettingsService();
         loadOrKeep(settings);
-        return settings.current().screenSize().scale();
+        return settings.current();
     }
 
     private static void loadOrKeep(PropertiesAppSettingsService settings) {

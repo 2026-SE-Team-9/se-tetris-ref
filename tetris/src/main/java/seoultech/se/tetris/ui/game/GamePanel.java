@@ -32,6 +32,7 @@ public class GamePanel extends JPanel {
     static final Color FLASH_COLOR = Color.WHITE;
 
     private final transient GameState state;
+    private boolean colorBlind;
     private double scale;
     private int cell;
     private int margin;
@@ -46,9 +47,28 @@ public class GamePanel extends JPanel {
 
     /** @param scale 기본 크기에 곱하는 배율. 0보다 커야 한다 */
     public GamePanel(GameState state, double scale) {
+        this(state, scale, false);
+    }
+
+    /**
+     * @param scale      기본 크기에 곱하는 배율. 0보다 커야 한다
+     * @param colorBlind 색맹 모드 색표를 쓸지 여부
+     */
+    public GamePanel(GameState state, double scale, boolean colorBlind) {
         this.state = state;
+        this.colorBlind = colorBlind;
         setBackground(Color.BLACK);
         setScale(scale);
+    }
+
+    /** 색맹 모드를 켜거나 끈다. 다시 그리기만 하면 되므로 창 크기는 바뀌지 않는다. */
+    public void setColorBlind(boolean colorBlind) {
+        this.colorBlind = colorBlind;
+        repaint();
+    }
+
+    public boolean isColorBlind() {
+        return colorBlind;
     }
 
     /**
@@ -191,11 +211,24 @@ public class GamePanel extends JPanel {
         g2.fillRect(x + 1, y + 1, cell - 2, cell - 2);
     }
 
-    /** 칸 번호의 색과 문자로 칸 하나를 그린다. 테트로미노 칸과 아이템 칸 모두 같은 방식이다. */
+    /**
+     * 칸 번호의 색과 문자로 칸 하나를 그린다. 테트로미노 칸과 아이템 칸 모두 같은 방식이다.
+     *
+     * <p>색맹 모드의 아이템 칸은 안쪽에 2픽셀 테두리를 그린다. 테두리는 바깥 1픽셀을 띄워
+     * 칸의 가장자리 색은 그대로 남긴다.
+     */
     private void drawCell(Graphics2D g2, int x, int y, int code, int size) {
-        g2.setColor(BlockPalette.colorOf(code));
+        Color fill = BlockPalette.colorOf(code, colorBlind);
+        g2.setColor(fill);
         g2.fillRect(x + 1, y + 1, size - 2, size - 2);
-        g2.setColor(Color.BLACK);
+        Color border = BlockPalette.borderColorOf(code, colorBlind);
+        if (border != null) {
+            g2.setColor(border);
+            g2.fillRect(x + 3, y + 3, size - 6, size - 6);
+            g2.setColor(fill);
+            g2.fillRect(x + 5, y + 5, size - 10, size - 10);
+        }
+        g2.setColor(BlockPalette.textColorOf(code, colorBlind));
         g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, size * 5 / 8));
         FontMetrics fm = g2.getFontMetrics();
         String s = String.valueOf(CellCode.symbolOf(code));
