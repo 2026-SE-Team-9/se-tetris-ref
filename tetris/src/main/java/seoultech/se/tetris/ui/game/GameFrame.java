@@ -14,6 +14,7 @@ import seoultech.se.tetris.config.AppSettings;
 import seoultech.se.tetris.config.PropertiesAppSettingsService;
 import seoultech.se.tetris.config.PropertiesKeyConfigService;
 import seoultech.se.tetris.engine.Difficulty;
+import seoultech.se.tetris.engine.GameMode;
 import seoultech.se.tetris.engine.TetrisEngine;
 import seoultech.se.tetris.score.CsvScoreRepository;
 import seoultech.se.tetris.ui.GameKeyInput;
@@ -65,7 +66,17 @@ public class GameFrame extends JFrame {
      * 현재 게임은 게임 도중 설정 파일이 바뀌어도 난이도는 바뀌지 않는다.
      */
     public static GameFrame launch(Difficulty difficulty, IntConsumer onGameOver, Runnable onReturnToTitle) {
-        TetrisEngine engine = new TetrisEngine(difficulty);
+        return launch(difficulty, GameMode.NORMAL, onGameOver, onReturnToTitle);
+    }
+
+    /**
+     * 모드를 지정하여 게임 화면을 연다. 아이템 모드에서는 10줄을 지울 때마다 아이템 블럭이 나온다.
+     *
+     * <p>모드와 난이도는 호출하는 쪽에서 결정하며, 게임 도중에는 바뀌지 않는다.
+     */
+    public static GameFrame launch(Difficulty difficulty, GameMode mode, IntConsumer onGameOver,
+            Runnable onReturnToTitle) {
+        TetrisEngine engine = new TetrisEngine(difficulty, mode);
         AppSettings saved = savedSettings();
         GamePanel panel = new GamePanel(engine, saved.screenSize().scale(), saved.colorBlind());
         GameFrame frame = new GameFrame(panel);
