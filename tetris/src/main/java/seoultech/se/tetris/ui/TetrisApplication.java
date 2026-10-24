@@ -1,6 +1,7 @@
 package seoultech.se.tetris.ui;
 
 import java.io.UncheckedIOException;
+import java.util.Objects;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -24,6 +25,7 @@ public final class TetrisApplication implements ScreenNavigator {
     private GameFrame game;
     private EndScreenFrame endScreen;
     private Difficulty currentDifficulty = Difficulty.DEFAULT;
+    private GameMode currentMode = GameMode.NORMAL;
 
     private TetrisApplication() {
     }
@@ -42,13 +44,14 @@ public final class TetrisApplication implements ScreenNavigator {
     }
 
     @Override
-    public void navigateToGame() {
+    public void navigateToGame(GameMode mode) {
         // 창을 닫기 전에 읽어야, 읽기에 실패해도 화면이 모두 닫힌 채로 남지 않는다.
         currentDifficulty = savedDifficulty(new PropertiesAppSettingsService());
+        currentMode = Objects.requireNonNull(mode, "mode");
         closeMenu();
         closeEndScreen();
         closeGame();
-        game = GameFrame.launch(currentDifficulty, this::navigateToGameOver, this::navigateToMenu);
+        game = GameFrame.launch(currentDifficulty, currentMode, this::navigateToGameOver, this::navigateToMenu);
     }
 
     /**
@@ -86,8 +89,8 @@ public final class TetrisApplication implements ScreenNavigator {
     public void navigateToGameOver(int finalScore) {
         closeGame();
         closeEndScreen();
-        // 모드 선택 기능이 생기기 전까지는 일반 모드로 기록한다. 저장소는 판마다 새로 만들어 파일에서 다시 읽는다.
-        endScreen = new EndScreenFrame(this, finalScore, GameMode.NORMAL,
+        // 시작할 때 고른 모드와 난이도로 기록한다. 저장소는 판마다 새로 만들어 파일에서 다시 읽는다.
+        endScreen = new EndScreenFrame(this, finalScore, currentMode,
                 currentDifficulty, new CsvScoreRepository());
         endScreen.showScreen();
     }

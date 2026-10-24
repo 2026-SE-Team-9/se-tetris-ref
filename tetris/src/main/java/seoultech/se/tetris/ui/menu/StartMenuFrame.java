@@ -3,6 +3,7 @@ package seoultech.se.tetris.ui.menu;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import seoultech.se.tetris.engine.GameMode;
 import seoultech.se.tetris.ui.ScreenNavigator;
 import seoultech.se.tetris.ui.scoreboard.ScoreboardPanel;
 import seoultech.se.tetris.ui.settings.SettingsPanel;
@@ -52,7 +53,7 @@ public class StartMenuFrame extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new StartMenuFrame(new ScreenNavigator() {
             @Override public void navigateToMenu() { System.out.println("메뉴"); }
-            @Override public void navigateToGame() { System.out.println("시작 선택"); }
+            @Override public void navigateToGame(GameMode mode) { System.out.println("시작 선택: " + mode); }
             @Override public void navigateToSettings() { System.out.println("설정 선택"); }
             @Override public void navigateToScoreboard() { System.out.println("스코어보드 선택"); }
             @Override public void navigateToGameOver(int finalScore) { System.out.println("게임 오버: " + finalScore); }
