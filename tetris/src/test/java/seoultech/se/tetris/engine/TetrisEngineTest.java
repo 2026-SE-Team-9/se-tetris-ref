@@ -813,6 +813,163 @@ class TetrisEngineTest {
         }
 
         // --------------------------------------------------------------
+        // 아이템 효과
+        // --------------------------------------------------------------
+
+        /** 미리 채운 보드에서 현재 블럭을 아이템 블럭으로 바꿔 시작한다. 블럭은 생성 위치에 놓는다. */
+        private TetrisEngine engineWithCurrent(int[][] grid, Block itemBlock) {
+            TetrisEngine created = engineWith(grid);
+            created.replaceCurrentBlock(itemBlock.moved(Board.SPAWN_ROW, TetrisEngine.SPAWN_COL));
+            return created;
+        }
+
+        /** 한 줄을 문자열로 채운다. 'X'는 채운 칸, 'D'는 Double or Nothing 칸, '.'은 빈 칸이다. */
+        private void setRow(int[][] grid, int row, String cells) {
+            for (int c = 0; c < Board.WIDTH; c++) {
+                char ch = cells.charAt(c);
+                grid[row][c] = ch == '.' ? 0 : ch == 'D' ? ItemType.DOUBLE_OR_NOTHING.code() : FILLED;
+            }
+        }
+
+        @Test
+        @DisplayName("줄 삭제 아이템: 꽉 차지 않은 줄도 지우고 줄 삭제로 점수와 줄 수를 반영한다")
+        void lineClearItemClearsRow() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            setRow(grid, 19, "X.........");
+            TetrisEngine target = engineWithCurrent(grid,
+                    Block.of(BlockType.I, 0, 0).withItem(ItemType.LINE_CLEAR, 1, 0));
+
+            target.dropToBottom();
+            assertTrue(target.isClearing());
+            target.finishClearing();
+
+            assertEquals(1, target.getLinesCleared());
+            assertEquals(List.of(List.of(1, 100)), clearEvents());
+            assertEquals(18 + 100, target.getScore());
+            assertEquals(BlockType.EMPTY_CODE, target.getBoard()[19][0]);
+        }
+
+        @Test
+        @DisplayName("Double or Nothing: D가 있는 줄을 꽉 채워 지우면 줄 삭제 점수가 2배다")
+        void doubleOrNothingDoublesScore() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            setRow(grid, 19, "DXX....XXX");
+            TetrisEngine target = engineWith(grid);
+
+            dropAndClear(target);
+
+            assertEquals(List.of(List.of(1, 200)), clearEvents());
+            assertEquals(18 + 200, target.getScore());
+        }
+
+        @Test
+        @DisplayName("무게추: 바닥이나 블럭에 닿기 전에는 좌우로 움직이고, 닿은 뒤에는 움직이지 않는다")
+        void weightCannotSlideAfterLanding() {
+            TetrisEngine target = engineWithCurrent(new int[Board.HEIGHT][Board.WIDTH],
+                    Block.of(ItemType.WEIGHT, 0, 0));
+
+            target.moveLeft();
+            assertEquals(TetrisEngine.SPAWN_COL - 1, target.getCurrentX());
+
+            for (int i = 0; i < 18; i++) {
+                target.moveDown();                       // 아랫줄이 19행에 닿을 때까지
+            }
+            target.moveLeft();
+            assertEquals(TetrisEngine.SPAWN_COL - 1, target.getCurrentX());
+            target.moveRight();
+            assertEquals(TetrisEngine.SPAWN_COL - 1, target.getCurrentX());
+        }
+
+        @Test
+        @DisplayName("무게추: 아래 칸을 지워 칸당 10점을 얻고, 바닥에 내려앉아 줄이 차면 일반 줄 삭제로 이어진다")
+        void weightRemovesCellsThenClearsFilledLine() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            setRow(grid, 18, "...XXXX...");
+            setRow(grid, 19, "XXX....XXX");
+            TetrisEngine target = engineWithCurrent(grid, Block.of(ItemType.WEIGHT, 0, 0));
+
+            target.dropToBottom();                       // 아랫줄이 17행에 멈춘다 (16칸 낙하)
+            assertTrue(target.isClearing());
+            assertTrue(target.getClearingCells()[18][3]);
+            assertFalse(target.getClearingCells()[19][0]);
+
+            target.finishClearing();                     // 18행 4칸 제거 → 바닥에 내려앉아 19행이 찬다
+            assertTrue(target.isClearing());
+            assertEquals(0, target.getLinesCleared());   // 무게추가 지운 칸은 줄 삭제가 아니다
+            assertEquals(16 + 40, target.getScore());
+
+            target.finishClearing();
+
+            assertEquals(1, target.getLinesCleared());
+            assertEquals(List.of(List.of(1, 100)), clearEvents());
+            assertEquals(16 + 40 + 100, target.getScore());
+        }
+
+        @Test
+        @DisplayName("Tall Boy: 파고든 자리 중심 5×5를 지우고 자기 칸을 포함해 칸당 10점을 얻는다")
+        void tallBoyExplodes() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            fillRows(grid, 15, 19, 9);
+            TetrisEngine target = engineWithCurrent(grid, Block.of(ItemType.TALL_BOY, 0, 0));
+
+            target.dropToBottom();                       // 4열 14행에 멈춘다 (14칸 낙하)
+            target.finishClearing();
+
+            // 중심 (16, 4), 14~18행 × 2~6열 중 블럭이 있던 20칸 (중심 칸은 자기 칸으로 한 번)
+            assertEquals(14 + 200, target.getScore());
+            assertEquals(0, target.getLinesCleared());
+            assertEquals(BlockType.EMPTY_CODE, target.getBoard()[16][4]);
+            assertTrue(target.getBoard()[19][4] != BlockType.EMPTY_CODE);   // 범위 밖은 그대로
+            assertTrue(target.getBoard()[15][1] != BlockType.EMPTY_CODE);
+        }
+
+        @Test
+        @DisplayName("Tall Boy: 폭발 범위 위쪽의 블럭은 떠 있지 않고 아래가 막힐 때까지 내려온다")
+        void tallBoyDropsBlocksAbove() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            for (int r = 11; r <= 14; r++) {
+                setRow(grid, r, "..XX......");       // 2~3열의 탑. 아래가 모두 폭발 범위 안이다
+            }
+            setRow(grid, 15, "XXXX.XXXX.");
+            fillRows(grid, 16, 19, 9);
+            TetrisEngine target = engineWithCurrent(grid, Block.of(ItemType.TALL_BOY, 0, 0));
+
+            target.dropToBottom();                       // 4열 15행에 멈춘 뒤 17행으로 파고든다
+            target.finishClearing();                     // 15~19행 × 2~6열 폭발
+
+            int[][] board = target.getBoard();
+            for (int r = 11; r <= 15; r++) {
+                assertEquals(BlockType.EMPTY_CODE, board[r][2], "떠 있는 칸이 남았습니다: " + r + "행");
+            }
+            for (int r = 16; r <= 19; r++) {
+                assertTrue(board[r][2] != BlockType.EMPTY_CODE && board[r][3] != BlockType.EMPTY_CODE,
+                        "탑이 바닥까지 내려와야 합니다: " + r + "행");
+            }
+            assertTrue(board[19][1] != BlockType.EMPTY_CODE);   // 범위 밖 열은 그대로
+        }
+
+        @Test
+        @DisplayName("Crusher: 아래 줄을 짓누르고, 내려앉아 줄이 차면 일반 줄 삭제로 이어진다")
+        void crusherCrushesThenClearsFilledLine() {
+            int[][] grid = new int[Board.HEIGHT][Board.WIDTH];
+            setRow(grid, 18, "XXX...XXXX");
+            setRow(grid, 19, "...XXX...X");
+            TetrisEngine target = engineWithCurrent(grid, Block.of(ItemType.CRUSHER, 0, 0));
+
+            target.dropToBottom();                       // 16~18행에 멈춘다 (16칸 낙하)
+            target.finishClearing();                     // 19행을 짓누르면 18행이 내려와 꽉 찬다
+            assertTrue(target.isClearing());
+            assertEquals(0, target.getLinesCleared());   // 짓누른 줄은 줄 삭제가 아니다
+            assertEquals(16, target.getScore());
+
+            target.finishClearing();
+
+            assertEquals(1, target.getLinesCleared());
+            assertEquals(16 + 100, target.getScore());
+            assertEquals(ItemType.CRUSHER.code(), target.getBoard()[19][3]);   // 남은 Crusher 두 줄이 내려온다
+        }
+
+        // --------------------------------------------------------------
         // 줄 삭제 애니메이션
         // --------------------------------------------------------------
 

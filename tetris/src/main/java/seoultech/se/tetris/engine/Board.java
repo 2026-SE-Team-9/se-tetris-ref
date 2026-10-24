@@ -149,6 +149,38 @@ public class Board {
         return copy;
     }
 
+    /**
+     * 지정한 칸을 비운다. 위의 칸은 내려오지 않는다.
+     *
+     * <p>무게추와 Tall Boy처럼 줄이 아닌 칸을 지우는 아이템이 쓴다.
+     *
+     * @throws IllegalArgumentException 보드 범위를 벗어난 칸인 경우
+     */
+    public void clearCell(int row, int col) {
+        if (row < 0 || row >= HEIGHT || col < 0 || col >= WIDTH) {
+            throw new IllegalArgumentException("보드 범위를 벗어난 칸입니다: " + row + ", " + col);
+        }
+        grid[row][col] = BlockType.EMPTY_CODE;
+    }
+
+    /** 지정한 열에서 topRow보다 위에 있는 칸들을 한 덩어리로, 아래가 막힐 때까지 내린다. */
+    public void dropAbove(int col, int topRow) {
+        if (col < 0 || col >= WIDTH || topRow < 0 || topRow > HEIGHT) {
+            throw new IllegalArgumentException("보드 범위를 벗어났습니다: 열 " + col + ", 행 " + topRow);
+        }
+        int gap = 0;
+        while (topRow + gap < HEIGHT && grid[topRow + gap][col] == BlockType.EMPTY_CODE) {
+            gap++;
+        }
+        if (gap == 0) {
+            return;
+        }
+        for (int row = topRow - 1; row >= 0; row--) {
+            grid[row + gap][col] = grid[row][col];
+            grid[row][col] = BlockType.EMPTY_CODE;
+        }
+    }
+
     /** 보드를 모두 비운다. */
     public void reset() {
         for (int r = 0; r < HEIGHT; r++) {
