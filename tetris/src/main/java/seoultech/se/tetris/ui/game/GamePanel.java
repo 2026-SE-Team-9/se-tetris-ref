@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockType;
+import seoultech.se.tetris.blocks.CellCode;
 import seoultech.se.tetris.component.model.GameState;
 import seoultech.se.tetris.engine.Board;
 
@@ -111,7 +112,7 @@ public class GamePanel extends JPanel {
         int offset = Board.HEIGHT - Board.VISIBLE_HEIGHT;
         for (int r = offset; r < Board.HEIGHT; r++) {
             for (int c = 0; c < Board.WIDTH; c++) {
-                if (grid[r][c] == BlockType.EMPTY_CODE) {
+                if (CellCode.isEmpty(grid[r][c])) {
                     continue;
                 }
                 int x = margin + c * cell;
@@ -119,7 +120,7 @@ public class GamePanel extends JPanel {
                 if (isFlashing(clearing, r - offset, c)) {
                     drawFlashCell(g2, x, y);
                 } else {
-                    drawCell(g2, x, y, BlockType.fromCode(grid[r][c]));
+                    drawCell(g2, x, y, grid[r][c], cell);
                 }
             }
         }
@@ -131,7 +132,8 @@ public class GamePanel extends JPanel {
                 for (int c = 0; c < BlockType.SIZE; c++) {
                     int row = current.boardRow(r) - offset;
                     if (current.isFilled(r, c) && row >= 0) {
-                        drawCell(g2, margin + current.boardCol(c) * cell, margin + row * cell, current.type());
+                        drawCell(g2, margin + current.boardCol(c) * cell, margin + row * cell,
+                                current.codeAt(r, c), cell);
                     }
                 }
             }
@@ -150,7 +152,7 @@ public class GamePanel extends JPanel {
             for (int r = 0; r < BlockType.SIZE; r++) {
                 for (int c = 0; c < BlockType.SIZE; c++) {
                     if (next.isFilled(r, c)) {
-                        drawCell(g2, sideX + c * mini, margin + scaled(30) + r * mini, next.type(), mini);
+                        drawCell(g2, sideX + c * mini, margin + scaled(30) + r * mini, next.codeAt(r, c), mini);
                     }
                 }
             }
@@ -189,17 +191,14 @@ public class GamePanel extends JPanel {
         g2.fillRect(x + 1, y + 1, cell - 2, cell - 2);
     }
 
-    private void drawCell(Graphics2D g2, int x, int y, BlockType type) {
-        drawCell(g2, x, y, type, cell);
-    }
-
-    private void drawCell(Graphics2D g2, int x, int y, BlockType type, int size) {
-        g2.setColor(BlockPalette.colorOf(type));
+    /** 칸 번호의 색과 문자로 칸 하나를 그린다. 테트로미노 칸과 아이템 칸 모두 같은 방식이다. */
+    private void drawCell(Graphics2D g2, int x, int y, int code, int size) {
+        g2.setColor(BlockPalette.colorOf(code));
         g2.fillRect(x + 1, y + 1, size - 2, size - 2);
         g2.setColor(Color.BLACK);
         g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, size * 5 / 8));
         FontMetrics fm = g2.getFontMetrics();
-        String s = String.valueOf(type.symbol());
+        String s = String.valueOf(CellCode.symbolOf(code));
         g2.drawString(s, x + (size - fm.stringWidth(s)) / 2, y + (size + fm.getAscent() - fm.getDescent()) / 2);
     }
 
